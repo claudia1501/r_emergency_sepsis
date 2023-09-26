@@ -1,0 +1,65 @@
+---
+title: "03_tables"
+output: html_document
+---
+
+# Environment
+```{r}
+library(tableone)
+library(kableExtra)
+library(knitr)
+```
+
+#Table one
+```{r}
+#Lista de variables incluidas en la table 1
+vars_in_table1 <- names(final_df_order %>% select(patientunitstayid, patienthealthsystemstayid, gender_numeric, age_numeric,ethnicity,hospitalid, wardid,apacheadmissiondx,admissionheight,hospitaladmitoffset,hospitaladmitsource,hospitaldischargeyear,hospitaldischargeoffset,hospitaldischargelocation, hospitaldischargestatus, unittype,unitadmitsource,unitvisitnumber,unitstaytype,admissionweight,dischargeweight,unitdischargeoffset,unitdischargelocation, unitdischargestatus,uniquepid, microlabid,culturetakenoffset, culturesite, organism,antibiotic, sensitivitylevel))
+```
+
+#Crea un conjunto de datos con solo variables seleccionadas utilizando nuestro conjunto de datos original y genera una lista vacía para almacenar variables categóricas
+```{r}
+table1_dataset <- final_df_order[,vars_in_table1]
+cat_variables <- rep(NA, length(vars_in_table1))
+stratifyby <- "hospitaldischargestatus"
+```
+
+#Detects whether a variable is categorical or not
+```{r}
+cont <- 1
+for (i in 1:length(vars_in_table1)) {
+  if ( n_distinct(table1_dataset[vars_in_table1[i]]) <= 10) {
+    print(i)
+    print(vars_in_table1[i])
+    print(names(table1_dataset[vars_in_table1[i]]))
+    cat_variables[cont] <- names(table1_dataset[vars_in_table1[i]])
+    cont <- cont+1
+  }
+} 
+cat_variables <- cat_variables[!is.na(cat_variables)]
+table1_base <- print(CreateTableOne(vars = vars_in_table1
+                                    , strata = stratifyby
+                                    , factorVars = cat_variables
+      ,data = table1_dataset, addOverall = T), varLabels = T)
+
+```
+# Ejecute esto en la consola para la salida html, el código a continuación usa kableExtra
+```{r}
+stratification_cats <- n_distinct(table1_dataset[,stratifyby])
+```
+# For console
+
+```{r}
+table1_base %>%
+  kbl(caption = "Table 1 of base model= er_icu_mort", align = "c") %>%
+  kable_classic_2(full_width = F, html_font = "Cambria") %>%
+  add_header_above(c("","", "No", "Yes","",""))
+
+#Exportar tabla
+table1_base %>%
+  kbl(caption = "Table 1 of base model= er_icu_mort", align = "c") %>%
+  kable_classic_2(full_width = F, html_font = "Cambria") %>%
+  add_header_above(c("","","No","Yes","","")) %>%
+  save_kable("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/table1_base.html", zoom = 10)
+```
+
+
