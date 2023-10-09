@@ -1,6 +1,7 @@
 -- CRITERIOS DE INCLUSIÓN: >16 AÑOS, ENTRADA EMERGENCIA, Y SEPSIS
 SELECT
-  *
+  patientunitstayid, patienthealthsystemstayid, gender, age, ethnicity, hospitalid, wardid,apacheadmissiondx, admissionheight, hospitaladmitoffset, hospitaladmitsource, hospitaldischargeyear, hospitaldischargeoffset, hospitaldischargelocation, hospitaldischargestatus, unittype, unitadmitsource, unitvisitnumber, unitstaytype, admissionweight, dischargeweight, unitdischargeoffset, unitdischargelocation, unitdischargestatus, 	
+uniquepid 
 FROM
   `physionet-data.eicu_crd.patient`
 WHERE
