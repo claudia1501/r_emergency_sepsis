@@ -10,6 +10,7 @@ WHERE
     OR age >= '16')
   AND hospitaladmitsource = 'Emergency Department'
   AND unitadmitsource = 'Emergency Department'
+  AND unitstaytype = 'admit'
   AND (apacheadmissiondx LIKE '%Sepsis%'
     OR apacheadmissiondx = 'Cellulitis and localized soft tissue infections, surgery for'
     OR apacheadmissiondx = 'Abscess/infection-cranial, surgery for'
