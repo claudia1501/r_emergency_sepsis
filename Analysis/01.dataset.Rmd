@@ -102,12 +102,17 @@ final_df <- final_df %>%
                                           ifelse(hospitaldischargestatus == 'Alive', 1,
                                                  ifelse(trimws(hospitaldischargestatus) == '', NA_real_, NA_real_))))
 ```
+#Eminar el valor other en antibióticos y mircroorganismos
+```{r}
+unique(final_df$antibiotic)
+antibiotic_new <- 
+```
 
 
 ```{r}
 #Orden de las variables
 final_df_order <- final_df %>%
-  select(patientunitstayid, patienthealthsystemstayid, gender_numeric, age_numeric,ethnicity,hospitalid, wardid,apacheadmissiondx,admissionheight,hospitaladmitoffset,hospitaladmitsource,hospitaldischargeyear,hospitaldischargeoffset,hospitaldischargelocation, hospitaldischargestatus, unittype, unitadmitsource,unitvisitnumber,unitstaytype,admissionweight,dischargeweight,unitdischargeoffset,unitdischargelocation, unitdischargestatus,uniquepid, microlabid,culturetakenoffset, culturesite, organism,antibiotic, sensitivitylevel)
+  select(patientunitstayid, patienthealthsystemstayid, gender_numeric, age_numeric,ethnicity,hospitalid, wardid,apacheadmissiondx,admissionheight,hospitaladmitoffset,hospitaladmitsource,hospitaldischargeyear,hospitaldischargeoffset,hospitaldischargelocation, hospitaldischargestatus, unittype,unitadmitsource,unitvisitnumber,unitstaytype,admissionweight,dischargeweight,unitdischargeoffset,unitdischargelocation, unitdischargestatus,uniquepid,culturetakenoffset, culturesite, organism,antibiotic, sensitivitylevel)
 ```
 
 
