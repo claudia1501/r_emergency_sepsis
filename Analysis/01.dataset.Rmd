@@ -111,12 +111,6 @@ final_df <- final_df %>%
                                              ifelse(trimws(unitdischargestatus) == '', NA_real_, NA_real_))))
 ```
 
-#Eminar el valor other en antibióticos y mircroorganismos
-```{r}
-unique(final_df$antibiotic)
-antibiotic_new <- 
-```
-
 
 ```{r}
 #Orden de las variables
