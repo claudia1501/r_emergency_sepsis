@@ -93,7 +93,7 @@ final_df <- final_df %>%
                                    ifelse(trimws(gender) == '' | trimws(gender) == 'Unknown', NA_real_, NA_real_)))
   )
 ```
-#Variable dependiente = hospitaldischargestatus
+#Variable hospitaldischargestatus (estado del que sale del ho)
 ```{r}
 #Pasamos variable a numérica. Expire = 0, Alive = 1
 final_df <- final_df %>% 
@@ -102,6 +102,15 @@ final_df <- final_df %>%
                                           ifelse(hospitaldischargestatus == 'Alive', 1,
                                                  ifelse(trimws(hospitaldischargestatus) == '', NA_real_, NA_real_))))
 ```
+
+#Variable unitdischargestatus
+```{r}
+final_df <- final_df %>%
+  mutate(unitdischargestatus = ifelse(unitdischargestatus == 'Expired', 0,
+                                      ifelse(unitdischargestatus == 'Alive', 1,
+                                             ifelse(trimws(unitdischargestatus) == '', NA_real_, NA_real_))))
+```
+
 #Eminar el valor other en antibióticos y mircroorganismos
 ```{r}
 unique(final_df$antibiotic)
