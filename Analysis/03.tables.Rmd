@@ -13,7 +13,7 @@ library(knitr)
 #Table one
 ```{r}
 #Lista de variables incluidas en la table 1
-vars_in_table1 <- names(final_df_order %>% select(gender_numeric, age_numeric,ethnicity,hospitalid, wardid,apacheadmissiondx,admissionheight,hospitaladmitoffset,hospitaladmitsource,hospitaldischargeyear,hospitaldischargeoffset,hospitaldischargelocation, hospitaldischargestatus, unittype,unitadmitsource,unitvisitnumber,unitstaytype,admissionweight,dischargeweight,unitdischargeoffset,unitdischargelocation, unitdischargestatus,culturetakenoffset, culturesite, organism,antibiotic, sensitivitylevel))
+vars_in_table1 <- names(final_df_order %>% select(gender_numeric, age_numeric,ethnicity,hospitalid,apacheadmissiondx,admissionheight,hospitaladmitoffset,hospitaladmitsource,hospitaldischargeoffset, hospitaldischargestatus, unittype,unitadmitsource,unitstaytype,admissionweight,dischargeweight,unitdischargeoffset,unitdischargestatus,culturetakenoffset,organism,antibiotic,sensitivitylevel))
 ```
 
 #Crea un conjunto de datos con solo variables seleccionadas utilizando nuestro conjunto de datos original y genera una lista vacía para almacenar variables categóricas
