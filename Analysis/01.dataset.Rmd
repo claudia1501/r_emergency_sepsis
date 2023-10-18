@@ -68,12 +68,13 @@ Loading queries and extracting the data.
 ```{r}
 patients_dates <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/patients_date.sql"))
 microlab_dates <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/microbiology_tests.sql"))
+apachescore <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/apachescore.sql"))
 ```
 
 # Joining df
 ```{r}
 #Unimos df
-dfs_to_join <- list(patients_dates,microlab_dates)
+dfs_to_join <- list(patients_dates,microlab_dates,apachescore)
 final_df <- Reduce(function(x,y) merge(x,y, by = "patientunitstayid", all.x = TRUE), dfs_to_join)
 ```
 
@@ -110,12 +111,17 @@ final_df <- final_df %>%
                                       ifelse(unitdischargestatus == 'Alive', 1,
                                              ifelse(trimws(unitdischargestatus) == '', NA_real_, NA_real_))))
 ```
+#Variable hospitaladmitoffset, change name
+```{r}
+final_df <- final_df %>%
+  rename(lengthofstay = hospitaladmitoffset)
+```
 
 
 ```{r}
 #Orden de las variables
 final_df_order <- final_df %>%
-  select(patientunitstayid, patienthealthsystemstayid, gender_numeric, age_numeric,ethnicity,hospitalid, wardid,apacheadmissiondx,admissionheight,hospitaladmitoffset,hospitaladmitsource,hospitaldischargeyear,hospitaldischargeoffset,hospitaldischargelocation, hospitaldischargestatus, unittype,unitadmitsource,unitvisitnumber,unitstaytype,admissionweight,dischargeweight,unitdischargeoffset,unitdischargelocation, unitdischargestatus,uniquepid,culturetakenoffset, culturesite, organism,antibiotic, sensitivitylevel)
+  select(patientunitstayid, patienthealthsystemstayid, gender_numeric, age_numeric,ethnicity,hospitalid, wardid,apacheadmissiondx,admissionheight,lengthofstay,hospitaladmitsource,hospitaldischargeyear,hospitaldischargeoffset,hospitaldischargelocation, hospitaldischargestatus, unittype,unitadmitsource,unitvisitnumber,unitstaytype,admissionweight,dischargeweight,unitdischargeoffset,unitdischargelocation, unitdischargestatus,uniquepid,culturetakenoffset, culturesite, organism,antibiotic, sensitivitylevel, max_apachescore)
 ```
 
 
