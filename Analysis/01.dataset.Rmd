@@ -144,9 +144,29 @@ valores_imputados <- sample(names(proporcion_genero), sum(is.na(final_df_order$g
 #Asignamos los valores imputados a final_df_order
 final_df_order$gender_num[is.na(final_df_order$gender_num)] <- valores_imputados
 ```
+
 ##Variable age_num
 ```{r}
+# Crear un dataframe de datos con valores NA en 'age_num' a predecir
+df_to_predict <- final_df_order[is.na(final_df_order$age_num), ]
 
+# Utilizar el modelo para predecir los valores faltantes
+predictions <- predict(model, newdata = df_to_predict)
+
+# Asignar las predicciones a las filas correspondientes en final_df_order
+final_df_order$age_num[is.na(final_df_order$age_num)] <- predictions
+
+```
+##variable admissionheight
+```{r}
+# Crear un dataframe de datos con valores NA en 'admissionheight' a predecir
+df_to_predict_admissionheight <- final_df_order[is.na(final_df_order$admissionheight), ]
+
+# Utilizar el modelo para predecir los valores faltantes
+predictions_admissionheight <- predict(model, newdata = df_to_predict_admissionheight)
+
+# Asignar las predicciones a las filas correspondientes en final_df_order
+final_df_order$admissionheight [is.na(final_df_order$admissionheight)] <- predictions_admissionheight
 ```
 
 
