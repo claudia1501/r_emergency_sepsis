@@ -67,14 +67,14 @@ con <- dbConnect(
 Loading queries and extracting the data.
 ```{r}
 patients_dates <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/patients_date.sql"))
-microlab_dates <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/microbiology_tests.sql"))
+var_confounder <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/microbiology_tests.sql"))
 apachescore <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/apachescore.sql"))
 ```
 
 # Joining df
 ```{r}
 #Unimos df
-dfs_to_join <- list(patients_dates,microlab_dates,apachescore)
+dfs_to_join <- list(patients_dates, var_confounder, apachescore)
 final_df <- Reduce(function(x,y) merge(x,y, by = "patientunitstayid", all.x = TRUE), dfs_to_join)
 ```
 
@@ -83,7 +83,7 @@ final_df <- Reduce(function(x,y) merge(x,y, by = "patientunitstayid", all.x = TR
 #Pasamos variable edad a númerica. Reemplazamos >89 = 90. Variable género a numérica: hombre = 0, mujer = 1
 final_df <- final_df %>%
   mutate(
-    age_num = ifelse(age == '>89', 90, as.numeric(as.character(age))),
+    age_num = ifelse(age == '> 89', 90, as.numeric(as.character(age))),
     gender_num = case_when(
       gender == 'Male' ~ 0,
       gender == 'Female' ~ 1,
@@ -93,34 +93,25 @@ final_df <- final_df %>%
   )
 
 ```
-#Variable hospitaldischargestatus (estado del que sale del hospital)
-```{r}
-#Pasamos variable a numérica. Expire = 0, Alive = 1
-final_df <- final_df %>% 
-  mutate(
-    hospitaldischargestatus = ifelse(hospitaldischargestatus == 'Expired', 0,
-                                          ifelse(hospitaldischargestatus == 'Alive', 1,
-                                                 ifelse(trimws(hospitaldischargestatus) == '', NA_real_, NA_real_))))
-```
 
 #Variable unitdischargestatus (estado del que sale de la unidad)
 ```{r}
 final_df <- final_df %>%
-  mutate(unitdischargestatus = ifelse(unitdischargestatus == 'Expired', 0,
-                                      ifelse(unitdischargestatus == 'Alive', 1,
+  mutate(unitdischargestatus = ifelse(unitdischargestatus == 'Expired', 1,
+                                      ifelse(unitdischargestatus == 'Alive', 0,
                                              ifelse(trimws(unitdischargestatus) == '', NA_real_, NA_real_))))
 ```
 #Variable hospitaladmitoffset, change name
 ```{r}
 final_df <- final_df %>%
-  rename(lengthofstay = hospitaladmitoffset)
+  rename(er_los = hospitaladmitoffset)
 ```
 
 
 ```{r}
 #Orden de las variables
 final_df_order <- final_df %>%
-  select(patientunitstayid, patienthealthsystemstayid, gender_num, age_num,ethnicity,hospitalid, wardid,apacheadmissiondx,admissionheight,lengthofstay,hospitaladmitsource,hospitaldischargeyear,hospitaldischargeoffset,hospitaldischargelocation, hospitaldischargestatus, unittype,unitadmitsource,unitvisitnumber,unitstaytype,admissionweight,dischargeweight,unitdischargeoffset,unitdischargelocation, unitdischargestatus,uniquepid,culturetakenoffset, culturesite, organism,antibiotic, sensitivitylevel, max_apachescore)
+  select(patientunitstayid, patienthealthsystemstayid, gender, age,ethnicity,hospitalid,apacheadmissiondx,er_los,hospitaladmitsource,hospitaldischargeoffset, unittype,unitadmitsource,unitvisitnumber,unitstaytype,unitdischargeoffset,unitdischargelocation, unitdischargestatus,uniquepid,max_apachescore,sensitivity_counf)
 ```
 
 #Exploración valores na, null, vacíos. Imputaciones o eliminación
@@ -130,44 +121,7 @@ print('Columns in total_dataset having NAs')
 names(final_df_order)[colSums(is.na(final_df_order)) > 0]
 colSums(is.na(final_df_order))
 ```
-##Variable gender_num = 6
-```{r}
-#Calcular proporción de género en casos conocidos 
-proporcion_genero <- table(final_df_order$gender_num, useNA = "no")/sum(!is.na(final_df_order$gender_num))
 
-#Imputar valores faltantes en función de la proporción
-set.seed(123)
-
-#Establezco semilla para que los resultados sean reproduciebles
-valores_imputados <- sample(names(proporcion_genero), sum(is.na(final_df_order$gender_num)), replace = TRUE, prob = proporcion_genero)
-
-#Asignamos los valores imputados a final_df_order
-final_df_order$gender_num[is.na(final_df_order$gender_num)] <- valores_imputados
-```
-
-##Variable age_num
-```{r}
-# Crear un dataframe de datos con valores NA en 'age_num' a predecir
-df_to_predict <- final_df_order[is.na(final_df_order$age_num), ]
-
-# Utilizar el modelo para predecir los valores faltantes
-predictions <- predict(model, newdata = df_to_predict)
-
-# Asignar las predicciones a las filas correspondientes en final_df_order
-final_df_order$age_num[is.na(final_df_order$age_num)] <- predictions
-
-```
-##variable admissionheight
-```{r}
-# Crear un dataframe de datos con valores NA en 'admissionheight' a predecir
-df_to_predict_admissionheight <- final_df_order[is.na(final_df_order$admissionheight), ]
-
-# Utilizar el modelo para predecir los valores faltantes
-predictions_admissionheight <- predict(model, newdata = df_to_predict_admissionheight)
-
-# Asignar las predicciones a las filas correspondientes en final_df_order
-final_df_order$admissionheight [is.na(final_df_order$admissionheight)] <- predictions_admissionheight
-```
 
 
 

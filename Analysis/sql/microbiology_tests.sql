@@ -1,21 +1,14 @@
--- CRITERIOS DE INCLUSIÓN: 48 HORAS ANTES Y DESPUES DE PRUEBAS, POSITIVAS (RESISTANT)
-WITH FilteredMicrolab AS (
-  SELECT
-    patientunitstayid,
-    culturetakenoffset,
-    sensitivitylevel,
-    culturesite,
-    organism,
-    antibiotic
-  FROM
-    `physionet-data.eicu_crd.microlab`
-  WHERE
-    culturetakenoffset BETWEEN -2880 AND 2880
-    AND sensitivitylevel = 'Resistant'
-)
-SELECT m.*, fm.culturetakenoffset, fm.sensitivitylevel, fm.culturesite, fm.organism, fm.antibiotic
-FROM
-  (SELECT DISTINCT patientunitstayid FROM FilteredMicrolab) m
-JOIN FilteredMicrolab fm
-ON m.patientunitstayid = fm.patientunitstayid
-ORDER BY m.patientunitstayid;
+-- VARIABLE DEL MODELO (CONFOUNDER) RESISTENTES O NO
+SELECT 
+  patientunitstayid,
+  sensitivitylevel,
+  CASE 
+    WHEN sensitivitylevel IS NOT NULL AND TRIM(sensitivitylevel) <> '' THEN
+      CASE 
+        WHEN sensitivitylevel = 'Resistant' THEN '1'
+        ELSE '0'
+      END
+    ELSE sensitivitylevel
+  END AS sensitivity_counf
+FROM `physionet-data.eicu_crd.microlab`
+GROUP BY patientunitstayid, sensitivitylevel;
