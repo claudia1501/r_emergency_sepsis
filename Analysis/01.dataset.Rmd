@@ -17,6 +17,7 @@ date: '`r format(Sys.Date(), "%B %d, %Y")`'
 library(bigrquery)
 library(DBI)
 library(dplyr)
+library(summarytools)
 ```
 # BigQuery related functions
 
@@ -111,15 +112,13 @@ final_df <- final_df %>%
 ```{r}
 #Orden de las variables
 final_df_order <- final_df %>%
-  select(patientunitstayid, patienthealthsystemstayid, gender, age,ethnicity,hospitalid,apacheadmissiondx,er_los,hospitaladmitsource,hospitaldischargeoffset, unittype,unitadmitsource,unitvisitnumber,unitstaytype,unitdischargeoffset,unitdischargelocation, unitdischargestatus,uniquepid,max_apachescore,sensitivity_counf)
+  select(patientunitstayid, patienthealthsystemstayid, gender, age,ethnicity,hospitalid,apacheadmissiondx,er_los,hospitaladmitsource,hospitaldischargeoffset, unittype,unitadmitsource,unitvisitnumber,unitstaytype,unitdischargeoffset,unitdischargelocation, unitdischargestatus,uniquepid,apachescoreIV,sensitivity_counf)
 ```
 
-#Exploración valores na, null, vacíos. Imputaciones o eliminación
+#Imputation
 ```{r}
-##Columns with na values
-print('Columns in total_dataset having NAs')
-names(final_df_order)[colSums(is.na(final_df_order)) > 0]
-colSums(is.na(final_df_order))
+##Columns with na values: hospitaldischar
+
 ```
 
 
