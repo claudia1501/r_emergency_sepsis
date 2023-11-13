@@ -1,5 +1,9 @@
-SELECT patientunitstayid,sensitivitylevel
+-- ONLY RESISTANT
+SELECT 
+  patientunitstayid,
+  'Resistant' AS sensitivity_resistant
 FROM `physionet-data.eicu_crd.microlab` 
 WHERE sensitivitylevel = 'Resistant'
-GROUP BY patientunitstayid, sensitivitylevel
-ORDER BY patientunitstayid ASC
+GROUP BY patientunitstayid, sensitivity_resistant
+ORDER BY patientunitstayid ASC;
+
