@@ -108,6 +108,11 @@ final_df <- final_df %>%
 final_df <- final_df %>%
   rename(er_los = hospitaladmitoffset)
 ```
+### Variable apachescore,change name and na = median
+```{r}
+final_df <- final_df %>%
+  mutate(apachescoreIV = ifelse(is.na(apachescoreIV), median(apachescoreIV, na.rm = TRUE), apachescoreIV))
+```
 
 
 ```{r}
