@@ -69,12 +69,15 @@ Loading queries and extracting the data.
 ```{r}
 patients_dates <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/patients_date.sql"))
 apachescore <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/apachescore.sql"))
+sensitivitylevel <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/sensitivitylevel.sql"))
+apache_sepsis <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/apache_sepsis.sql"))
+apache_infection <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/apache_infection.sql"))
 ```
 
 # Joining 1º df
 ```{r}
 #Unimos df
-dfs_to_join <- list(patients_dates, apachescore)
+dfs_to_join <- list(patients_dates, apachescore,sensitivitylevel,apache_sepsis,apache_infection)
 final_df <- Reduce(function(x,y) merge(x,y, by = "patientunitstayid", all.x = TRUE), dfs_to_join)
 ```
 
@@ -87,10 +90,10 @@ final_df <- final_df %>%
 
 final_df <- final_df %>%
  mutate(
-   gender = as.factor(fct_explicit_na(gender, na_level = "Unknown"))) #NA values of gender are converted to "Unknown"
-#change reference level of factor gender variable to "Male") 
+   gender = as.factor(fct_explicit_na(gender, na_level = "Unknown"))) 
+
 final_df$gender <- relevel(final_df$gender,ref = "Male")
-# Filtrar las filas donde gender no sea "Unknown"
+
 final_df <- final_df %>% filter(gender != "Unknown")
 ```
 
@@ -117,18 +120,27 @@ final_df <- final_df %>%
 final_df <- final_df %>%
   mutate(apachescoreIV = ifelse(is.na(apachescoreIV), median(apachescoreIV, na.rm = TRUE), apachescoreIV))
 ```
+### Variable sensitivity:level, change na = no infection
+```{r}
+final_df <- final_df %>%
+  mutate(
+    sensitivity_level = replace_na(final_df$sensitivity_level, 'No infection')
+  )
+```
 
 
 ```{r}
 #Orden de las variables
 final_df_order <- final_df %>%
-  select(patientunitstayid, gender, age,ethnicity,hospitalid,apacheadmissiondx,er_los,hospitaladmitsource,hospitaldischargeoffset, unittype,unitvisitnumber,unitstaytype,unitdischargeoffset,unitdischargelocation, unitdischargestatus,uniquepid,apachescoreIV)
+  select(patientunitstayid, gender,age,ethnicity,hospitalid,er_los,sepsis_bin,infection_bin,apacheadmissiondx,hospitaladmitsource,hospitaldischargeoffset,unittype,unitvisitnumber,unitstaytype,unitdischargeoffset,unitdischargelocation, unitdischargestatus,uniquepid,apachescoreIV,sensitivity_level)
 ```
 
 ### NA filling
 ```{r}
 ##Columns with na values: gender
-final_df_order <- final_df_order %>% drop_na(gender)
+final_df_order <- final_df_order %>% drop_na(gender) %>%
+  mutate(gender = na_if(gender, '')) %>%
+  filter(!is.na(gender))
 
 ```
 
