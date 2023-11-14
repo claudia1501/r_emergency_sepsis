@@ -68,15 +68,13 @@ con <- dbConnect(
 Loading queries and extracting the data.
 ```{r}
 patients_dates <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/patients_date.sql"))
-var_confounder <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/microlab.sql"))
 apachescore <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/apachescore.sql"))
-var_confounder_resi <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/microlab_resistant.sql"))
 ```
 
 # Joining 1º df
 ```{r}
 #Unimos df
-dfs_to_join <- list(patients_dates, var_confounder, apachescore)
+dfs_to_join <- list(patients_dates, apachescore)
 final_df <- Reduce(function(x,y) merge(x,y, by = "patientunitstayid", all.x = TRUE), dfs_to_join)
 ```
 
@@ -85,23 +83,29 @@ final_df <- Reduce(function(x,y) merge(x,y, by = "patientunitstayid", all.x = TR
 #Pasamos variable edad a númerica. Reemplazamos >89 = 90. Variable género a numérica: hombre = 0, mujer = 1
 final_df <- final_df %>%
   mutate(
-    age = ifelse(age == '> 89', 90, as.numeric(as.character(age))),
-    gender = case_when(
-      gender == 'Male' ~ 0,
-      gender == 'Female' ~ 1,
-      trimws(gender) == '' | trimws(gender) == 'Unknown' ~ NA_real_,
-      TRUE ~ NA_real_
-    )
-  )
+    age = ifelse(age == '> 89', 90, as.numeric(as.character(age))))
 
+final_df <- final_df %>%
+ mutate(
+   gender = as.factor(fct_explicit_na(gender, na_level = "Unknown"))) #NA values of gender are converted to "Unknown"
+#change reference level of factor gender variable to "Male") 
+final_df$gender <- relevel(final_df$gender,ref = "Male")
+# Filtrar las filas donde gender no sea "Unknown"
+final_df <- final_df %>% filter(gender != "Unknown")
 ```
 
 ### Variable unitdischargestatus (estado del que sale de la unidad)
 ```{r}
+library(dplyr)
+
 final_df <- final_df %>%
-  mutate(unitdischargestatus = ifelse(unitdischargestatus == 'Expired', 1,
-                                      ifelse(unitdischargestatus == 'Alive', 0,
-                                             ifelse(trimws(unitdischargestatus) == '', NA_real_, NA_real_))))
+  mutate(
+    unitdischargestatus = ifelse(
+      unitdischargestatus == 'Expired', 'Expired',
+      ifelse(trimws(unitdischargestatus) == '' | unitdischargestatus == 'Alive', 'Alive', NA_character_)
+    )
+  )
+
 ```
 ### Variable hospitaladmitoffset, change name
 ```{r}
@@ -118,7 +122,7 @@ final_df <- final_df %>%
 ```{r}
 #Orden de las variables
 final_df_order <- final_df %>%
-  select(patientunitstayid, patienthealthsystemstayid, gender, age,ethnicity,hospitalid,apacheadmissiondx,er_los,hospitaladmitsource,hospitaldischargeoffset, unittype,unitvisitnumber,unitstaytype,unitdischargeoffset,unitdischargelocation, unitdischargestatus,uniquepid,apachescoreIV,sensitivity_counf)
+  select(patientunitstayid, gender, age,ethnicity,hospitalid,apacheadmissiondx,er_los,hospitaladmitsource,hospitaldischargeoffset, unittype,unitvisitnumber,unitstaytype,unitdischargeoffset,unitdischargelocation, unitdischargestatus,uniquepid,apachescoreIV)
 ```
 
 ### NA filling
@@ -126,27 +130,6 @@ final_df_order <- final_df %>%
 ##Columns with na values: gender
 final_df_order <- final_df_order %>% drop_na(gender)
 
-```
-# Joining 2º df
-```{r}
-#Unimos df
-dfs_to_join_2 <- list(patients_dates, var_confounder_resi, apachescore)
-final_df_2 <- Reduce(function(x,y) merge(x,y, by = "patientunitstayid", all.x = TRUE), dfs_to_join)
-```
-
-## Imputations
-```{r}
-#Pasamos variable edad a númerica. Reemplazamos >89 = 90. Variable género a numérica: hombre = 0, mujer = 1
-final_df_2 <- final_df_2 %>%
-  mutate(
-    age = ifelse(age == '> 89', 90, as.numeric(as.character(age))),
-    gender = case_when(
-      gender == 'Male' ~ 0,
-      gender == 'Female' ~ 1,
-      trimws(gender) == '' | trimws(gender) == 'Unknown' ~ NA_real_,
-      TRUE ~ NA_real_
-    )
-  )
 ```
 
 
