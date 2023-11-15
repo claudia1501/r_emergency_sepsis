@@ -113,7 +113,8 @@ final_df <- final_df %>%
 ### Variable hospitaladmitoffset, change name
 ```{r}
 final_df <- final_df %>%
-  rename(er_los = hospitaladmitoffset)
+  mutate(hospitaladmitoffset/60) %>%
+  rename(er_los_H = hospitaladmitoffset)
 ```
 ### Variable apachescore,change name and na = median
 ```{r}
@@ -132,7 +133,7 @@ final_df <- final_df %>%
 ```{r}
 #Orden de las variables
 final_df_order <- final_df %>%
-  select(patientunitstayid, gender,age,ethnicity,hospitalid,er_los,sepsis_bin,infection_bin,apacheadmissiondx,hospitaladmitsource,hospitaldischargeoffset,unittype,unitvisitnumber,unitstaytype,unitdischargeoffset,unitdischargelocation, unitdischargestatus,uniquepid,apachescoreIV,sensitivity_level)
+  select(patientunitstayid, gender,age,ethnicity,hospitalid,er_los_H,sepsis_bin,infection_bin,apacheadmissiondx,hospitaladmitsource,hospitaldischargeoffset,unittype,unitvisitnumber,unitstaytype,unitdischargeoffset,unitdischargelocation, unitdischargestatus,uniquepid,apachescoreIV,sensitivity_level)
 ```
 
 ### NA filling
