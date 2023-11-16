@@ -113,8 +113,8 @@ final_df <- final_df %>%
 ### Variable hospitaladmitoffset, change name
 ```{r}
 final_df <- final_df %>%
-  mutate(hospitaladmitoffset/60) %>%
-  rename(er_los_H = hospitaladmitoffset)
+  mutate(er_los_hrs = abs(hospitaladmitoffset/60)) %>%
+  select(-hospitaladmitoffset)
 ```
 ### Variable apachescore,change name and na = median
 ```{r}
@@ -125,7 +125,7 @@ final_df <- final_df %>%
 ```{r}
 final_df <- final_df %>%
   mutate(
-    sensitivity_level = replace_na(final_df$sensitivity_level, 'No infection')
+    bact_resist_level = replace_na(final_df$bact_resist_level, 'Not infection')
   )
 ```
 
@@ -133,7 +133,7 @@ final_df <- final_df %>%
 ```{r}
 #Orden de las variables
 final_df_order <- final_df %>%
-  select(patientunitstayid, gender,age,ethnicity,hospitalid,er_los_H,sepsis_bin,infection_bin,apacheadmissiondx,hospitaladmitsource,hospitaldischargeoffset,unittype,unitvisitnumber,unitstaytype,unitdischargeoffset,unitdischargelocation, unitdischargestatus,uniquepid,apachescoreIV,sensitivity_level)
+  select(patientunitstayid, gender,age,ethnicity,hospitalid,er_los_hrs,sepsis_bin,infection_bin,apacheadmissiondx,hospitaladmitsource,hospitaldischargeoffset,unittype,unitvisitnumber,unitstaytype,unitdischargeoffset,unitdischargelocation, unitdischargestatus,uniquepid,apachescoreIV,bact_resist_level)
 ```
 
 ### NA filling
@@ -141,7 +141,8 @@ final_df_order <- final_df %>%
 ##Columns with na values: gender
 final_df_order <- final_df_order %>% drop_na(gender) %>%
   mutate(gender = na_if(gender, '')) %>%
-  filter(!is.na(gender))
+  filter(!is.na(gender)) %>%
+  rename(sex = gender)
 
 ```
 

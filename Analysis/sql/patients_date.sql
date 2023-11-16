@@ -1,4 +1,4 @@
--- CRITERIOS DE INCLUSIÓN: >16 AÑOS, ENTRADA EMERGENCIA, Y SEPSIS
+-- INCLUSION CRITERIA: >16 YEARS, ER ENTRY, AND SEPSIS/infection
 SELECT
   patientunitstayid, patienthealthsystemstayid, gender, age, ethnicity, hospitalid, wardid,apacheadmissiondx, admissionheight, hospitaladmitoffset, hospitaladmitsource, hospitaldischargeyear, hospitaldischargeoffset, hospitaldischargelocation, hospitaldischargestatus, unittype, unitvisitnumber, unitstaytype, admissionweight, dischargeweight, unitdischargeoffset, unitdischargelocation, unitdischargestatus, 	
 uniquepid 
