@@ -1,3 +1,4 @@
+--- https://intensivecarenetwork.com/Calculators/Files/Apache4.html
 SELECT
   patientunitstayid,
   MAX(apachescore) AS apachescoreIV
