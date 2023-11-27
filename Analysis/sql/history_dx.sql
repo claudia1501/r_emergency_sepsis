@@ -2,9 +2,9 @@ SELECT
   patientunitstayid,
   MAX(hist_metastasis_bin) AS hist_metastasis_bin,
   MAX(hist_vih_sida_bin) AS hist_vih_sida_bin,
-  MAX(hist_cirrosis_hepatica_bin) AS hist_cirrosis_hepatica_bin,
+  MAX(hist_cirrosis_liver_bin) AS hist_cirrosis_liver_bin,
   MAX(hist_stroke_bin) AS hist_stroke_bin,
-  MAX(hist_insu_renal_bin) AS hist_insu_renal_bin,
+  MAX(hist_renal_bin) AS histrenal_bin,
   MAX(hist_diabetes_bin) AS hist_diabetes_bin,
   MAX(hist_cancer_bin) AS hist_cancer_bin,
   MAX(hist_leukemia_bin) AS hist_leukemia_bin,
@@ -38,7 +38,7 @@ SELECT
       ELSE
       0
     END
-       AS hist_cirrosis_hepatica_bin,
+       AS hist_cirrosis_liver_bin,
     CASE
         WHEN pasthistorypath IN ( 'notes/Progress Notes/Past History/Organ Systems/Neurologic/Strokes/multiple/multiple', 'notes/Progress Notes/Past History/Organ Systems/Neurologic/Strokes/stroke - remote', 'notes/Progress Notes/Past History/Organ Systems/Neurologic/Strokes/stroke - within 5 years', 'notes/Progress Notes/Past History/Organ Systems/Neurologic/Strokes/stroke - within 2 years', 'notes/Progress Notes/Past History/Organ Systems/Neurologic/Strokes/stroke - date unknown', 'notes/Progress Notes/Past History/Organ Systems/Neurologic/Strokes/stroke - within 6 months') THEN 1
       ELSE
@@ -50,7 +50,7 @@ SELECT
       ELSE
       0
     END
-       AS hist_insu_renal_bin,
+       AS hist_renal_bin,
     CASE 
         WHEN pasthistorypath IN ( 'notes/Progress Notes/Past History/Organ Systems/Endocrine (R)/Insulin Dependent Diabetes/insulin dependent diabetes', 'notes/Progress Notes/Past History/Organ Systems/Endocrine (R)/Non-Insulin Dependent Diabetes/non-medication dependent', 'notes/Progress Notes/Past History/Organ Systems/Endocrine (R)/Non-Insulin Dependent Diabetes/medication dependent') THEN 1
       ELSE
