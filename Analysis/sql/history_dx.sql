@@ -4,7 +4,7 @@ SELECT
   MAX(hist_vih_sida_bin) AS hist_vih_sida_bin,
   MAX(hist_cirrosis_liver_bin) AS hist_cirrosis_liver_bin,
   MAX(hist_stroke_bin) AS hist_stroke_bin,
-  MAX(hist_renal_bin) AS histrenal_bin,
+  MAX(hist_renal_bin) AS hist_renal_bin,
   MAX(hist_diabetes_bin) AS hist_diabetes_bin,
   MAX(hist_cancer_bin) AS hist_cancer_bin,
   MAX(hist_leukemia_bin) AS hist_leukemia_bin,
