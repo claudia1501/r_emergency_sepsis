@@ -74,6 +74,7 @@ apache_sepsis <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urg
 apache_infection <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/apache_infection.sql"))
 charlson_score <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/charlson_score.sql"))
 history_dx <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/history_dx.sql"))
+
 ```
 
 # Joining 1º df
@@ -91,12 +92,21 @@ final_df <- final_df %>%
     age = ifelse(age == '> 89', 90, as.numeric(as.character(age))))
 
 final_df <- final_df %>%
- mutate(
-   gender = as.factor(fct_explicit_na(gender, na_level = "Unknown"))) 
+ rename(sex = gender) 
 
-final_df$gender <- relevel(final_df$gender,ref = "Male")
+final_df <- final_df %>%
+  mutate(sex = ifelse(
+    sex == "Male", "0",
+    ifelse(
+      sex == "Female", "1",
+      NA_character_  # Agregué un valor por defecto para el caso en que sex no sea ni "Male" ni "Female"
+    )
+  )) %>%
+  mutate(sex = as.factor(sex)) %>%
+  mutate(sex = fct_explicit_na(sex, na_level = "Unknown")) %>%
+  filter(sex != "Unknown")
 
-final_df <- final_df %>% filter(gender != "Unknown")
+
 ```
 
 ### Variable unitdischargestatus (estado del que sale de la unidad)
@@ -106,8 +116,8 @@ library(dplyr)
 final_df <- final_df %>%
   mutate(
     unitdischargestatus = ifelse(
-      unitdischargestatus == 'Expired', 'Expired',
-      ifelse(trimws(unitdischargestatus) == '' | unitdischargestatus == 'Alive', 'Alive', NA_character_)
+      unitdischargestatus == 'Expired', '1',
+      ifelse(trimws(unitdischargestatus) == '' | unitdischargestatus == 'Alive', '0', NA_character_)
     )
   )
 
@@ -135,18 +145,10 @@ final_df <- final_df %>%
 ```{r}
 #Orden de las variables
 final_df_order <- final_df %>%
-  select(patientunitstayid, gender,age,ethnicity,hospitalid,er_los_hrs,sepsis_bin,infection_bin,apacheadmissiondx,hospitaladmitsource,unittype,unitvisitnumber,unitstaytype,unitdischargelocation, unitdischargestatus,uniquepid,apachescoreIV,bact_resist_level, final_charlson_score, hist_metastasis_bin,hist_vih_sida_bin,hist_cirrosis_liver_bin, hist_stroke_bin,hist_renal_bin,hist_diabetes_bin,hist_cancer_bin,hist_leukemia_bin,hist_lymphoma_bin,hist_myocardial_infar_bin,hist_chf_bin,hist_pvd_bin,hist_tia_bin,hist_dementia_bin,hist_copd_bin,hist_ctd_bin,hist_pud_bin,hist_liver_bin)
+  select(patientunitstayid, sex,age,ethnicity,hospitalid,er_los_hrs,sepsis_bin,infection_bin,apacheadmissiondx,hospitaladmitsource,unittype,unitvisitnumber,unitstaytype,unitdischargelocation, unitdischargestatus,uniquepid,apachescoreIV,bact_resist_level, final_charlson_score, hist_metastasis_bin,hist_vih_sida_bin,hist_cirrosis_liver_bin, hist_stroke_bin,hist_renal_bin,hist_diabetes_bin,hist_cancer_bin,hist_leukemia_bin,hist_lymphoma_bin,hist_myocardial_infar_bin,hist_chf_bin,hist_pvd_bin,hist_tia_bin,hist_dementia_bin,hist_copd_bin,hist_ctd_bin,hist_pud_bin,hist_liver_bin)
 ```
 
-### NA filling
-```{r}
-##Columns with na values: gender
-final_df_order <- final_df_order %>% drop_na(gender) %>%
-  mutate(gender = na_if(gender, '')) %>%
-  filter(!is.na(gender)) %>%
-  rename(sex = gender)
 
-```
 ### NA filling df history.dx
 ```{r}
 final_df_order <- final_df_order %>%
@@ -168,6 +170,12 @@ final_df_order <- final_df_order %>%
   mutate(hist_ctd_bin = replace_na(hist_ctd_bin, 0)) %>%
   mutate(hist_pud_bin = replace_na(hist_pud_bin, 0)) %>%
   mutate(hist_liver_bin = replace_na(hist_liver_bin, 0))
+```
+```{r}
+final_df_er_sepsis <- final_df_order %>%
+  select(patientunitstayid, sex,age,ethnicity,hospitalid,er_los_hrs,sepsis_bin,infection_bin,apacheadmissiondx,unittype, unitdischargestatus,apachescoreIV,bact_resist_level, final_charlson_score, hist_metastasis_bin,hist_vih_sida_bin,hist_cirrosis_liver_bin, hist_stroke_bin,hist_renal_bin,hist_diabetes_bin,hist_cancer_bin,hist_leukemia_bin,hist_lymphoma_bin,hist_myocardial_infar_bin,hist_chf_bin,hist_pvd_bin,hist_tia_bin,hist_dementia_bin,hist_copd_bin,hist_ctd_bin,hist_pud_bin,hist_liver_bin)
+
+write.csv(final_df_er_sepsis, file = "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/selected_data.csv", row.names = FALSE)
 ```
 
 

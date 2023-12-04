@@ -1,2 +1,155 @@
+---
+title: "03_modeling"
+# output: html_document
+---
+```{r}
+library(magrittr)
+library(tableone)
+library(kableExtra)
+library(summarytools)
+library(vroom)
+library(stringr)
+library(stringi)
+library(tidyr)
+library(mgcv)
+library(parglm)
+library(tibble)
+library(tidyverse)
+install.packages('lme4')
+library(lme4)
+library(boot)
+library(caTools)
+library(caret)
+library(pROC)
+library(fastDummies)
+```
+#Load Data
+```{r}
+final_df_er_sepsis <- read.csv("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/selected_data.csv")
+```
+#Variable dummies
+```{r}
+## Variable apacheadmissiondx
+apacheadmissiondx_ <- factor(final_df_er_sepsis$apacheadmissiondx)
+dummies_apacheadmissiondx <- model.matrix (~apacheadmissiondx_)
+
+## Variable bact_resist_level
+dummies_bact_resist_level <- dummy_cols(final_df_er_sepsis$bact_resist_level, remove_first_dummy = FALSE)
+
+## Variable unittype
+unittype_ <- factor(final_df_er_sepsis$unittype)
+dummies_unittype <- model.matrix(~unittype_)
+
+## Variable ethnicity
+ethnicity_ <- factor(final_df_er_sepsis$ethnicity)
+dummies_ethnicity <- model.matrix(~ethnicity_)
+
+## # Incluir dummies en el df final
+final_df_er_sepsis <- data.frame(final_df_er_sepsis, dummies_bact_resist_level[,2:4],dummies_unittype[,2:8],dummies_ethnicity[,2:7],dummies_apacheadmissiondx[,2:12])
+```
+#Creating functions
+```{r}
+# Metric performance
+precision <- function(matrix){
+  #True positive
+  tp <- matrix[2,2]
+  #False positive
+  fp <- matrix[1,2]
+}
+
+extract_coef_pval_OR <- function(model) {
+  as.data.frame(tibble(
+    term = names(model$coefficients),
+    estimate = model$coefficients,
+    std.error = sqrt(diag(vcov(model))),
+    statistic = model$coefficients / sqrt(diag(vcov(model))),
+    p.value = 2 * (1 - pnorm(abs(statistic))),
+    OR = round(exp(estimate), 2),
+    OR_CI_lower = round(exp(estimate - 1.96 * std.error), 2),
+    OR_CI_upper = round(exp(estimate + 1.96 * std.error), 2)
+  ))
+}
+
+set.seed(123)
+
+#Create a fucntion to split the data with balanced outcome percentages
+balanced_split <- function(data,outcome_var, split_ratio) {
+  unique_outcomes <- unique(data[[outcome_var]])
+  train_data <- data.frame()
+  test_data <- data.frame()
+
+#Iterate over each unique outcome and split the data
+for (outcome in unique_outcomes) {
+  subset_data <- data[data[[outcome_var]] == outcome, ]
+  split <- sample(nrow(subset_data), size = round(nrow(subset_data) * split_ratio))
+  train_subset <- subset_data[split, ]
+  test_subset <- subset_data[-split, ]
+  train_data <- rbind(train_data,train_subset)
+  test_data <- rbind(test_data, test_subset)
+}
+ return(list(train_data = train_data,test_data = test_data))
+}
+#Define the evaluation metric
+f1_score <- function(data,lev = NULL, model = NULL) {
+  predictions <- factor(ifelse(data$obs == lev[1], lev[1], lev[2]), levels = lev)
+  reference <- factor(data$obs,levels = lev)
+  f1 <- F_meas(predictions, reference,beta = 1)$F
+  return(f1)
+}
+
+```
+
+
+#General Additive Modeling (GAM): The GAM approach provides a robust framework to explore the complex relationships between multiple predictors and a binary health outcome, facilitating a comprehensive analysis in the field of public health research.
+```{r}
+set.seed(123)
+
+#Divida los datos en conjuntos de entrenamiento y prueba con porcentajes de resultados equilibrados 
+split_ratio <- 0.8
+split_data <- balanced_split(final_df_er_sepsis, "unitdischargestatus", split_ratio)
+train_data <- split_data$train_data
+test_data <- split_data$test_data
+place.knots(x = train_data$er_los_hrs, nk = 4)
+
+
+```
+
+
+
+##Train the GAM model
+```{r}
+gam_mortality_unit <- 
+  gam(
+    unitdischargestatus ~ s(er_los_hrs, k = 4) + sex + age + ethnicity + hospitalid + er_los_hrs + sepsis_bin + infection_bin + apacheadmissiondx + unittype + apachescoreIV + bact_resist_level + final_charlson_score + hist_metastasis_bin + hist_vih_sida_bin + hist_cirrosis_liver_bin + hist_stroke_bin + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_leukemia_bin + hist_lymphoma_bin + hist_myocardial_infar_bin + hist_chf_bin + hist_pvd_bin + hist_tia_bin + hist_dementia_bin + hist_copd_bin + hist_ctd_bin + hist_pud_bin + hist_liver_bin + .data_Not.infection + .data_Not.resistant + .data_Resistant + unittype_CCU.CTICU + unittype_CSICU + unittype_CTICU + unittype_Med.Surg.ICU + unittype_MICU + unittype_Neuro.ICU + unittype_SICU + ethnicity_African.American + ethnicity_Asian + ethnicity_Caucasian + ethnicity_Hispanic + ethnicity_Native.American + ethnicity_Other.Unknown + apacheadmissiondx_Cellulitis.and.localized.soft.tissue.infections + apacheadmissiondx_Cellulitis.and.localized.soft.tissue.infections..surgery.for + apacheadmissiondx_Infection.abscess..other.surgery.for + apacheadmissiondx_Renal.infection.abscess + apacheadmissiondx_Sepsis..cutaneous.soft.tissue + apacheadmissiondx_Sepsis..GI + apacheadmissiondx_Sepsis..gynecologic + apacheadmissiondx_Sepsis..other + apacheadmissiondx_Sepsis..pulmonary + apacheadmissiondx_Sepsis..renal.UTI..including.bladder. + apacheadmissiondx_Sepsis..unknown
+,data = train_data,
+    family = binomial()
+  )
+
+# Make predictions on the test data
+test_data$predicted <- predict(gam_mortality_unit, newdata = test_data, type = "response")
+test_data$predicted_bin <- ifelse(test_data$predicted > 0.5, 1, 0)
+
+# Calculate precision, recall, and F1 score
+precision <- sum(test_data$predicted_bin == 1 & test_data$unitdischargestatus == "Sí") / sum(test_data$predicted_bin == 1)
+recall <- sum(test_data$predicted_bin == 1 & test_data$unitdischargestatus == "Sí") / sum(test_data$unitdischargestatus == "Sí")
+f1 <- 2 * precision * recall / (precision + recall)
+
+# Print the results
+print(precision)
+print(recall)
+print(f1)
+
+
+
+# Convertir las variables a factores con los mismos niveles
+test_data$predicted_bin <- as.factor(test_data$predicted_bin)
+test_data$unitdischargestatus <- as.factor(test_data$unitdischargestatus)
+
+# Calcular la matriz de confusión
+confusion_matrix <- confusionMatrix(test_data$predicted_bin, test_data$unitdischargestatus)
+print(confusion_matrix)
+
+
+```
 
 
