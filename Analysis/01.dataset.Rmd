@@ -108,7 +108,49 @@ final_df <- final_df %>%
 
 #Change empty string = other
 final_df <- final_df %>%
-  mutate(ethnicity = recode(ethnicity, "" = "other"))
+  mutate(ethnicity = ifelse(ethnicity == "", "other", ethnicity)) %>%
+   mutate(ethnicity = ifelse(ethnicity %in% c("other", "Other/Unknown"), "other/unknown", ethnicity))
+
+#Variable sepsis_bin and infection_bin. Change: no = 0; sí = 1
+final_df <- final_df %>%
+  mutate(sepsis_bin = recode(sepsis_bin, "no" = "0")) %>%
+  mutate(sepsis_bin = recode(sepsis_bin, "sí" = "1")) %>%
+  mutate(infection_bin = recode(infection_bin, "no" = "0")) %>%
+  mutate(infection_bin = recode(infection_bin, "sí" = "1"))
+
+# Variable apache admission, agrupar en las 5 categorías con mayor valor y el resto agrupadas en la variable other (esto se hace debido a la poca cantidad que hay de muchas de esas categorias de diagnósticos)
+
+# Cuenta la frecuencia de cada categoría
+apache_counts <- final_df %>%
+  count(apacheadmissiondx, name = "Frequency")
+# Identifica las 5 categorías más frecuentes
+top_categories <- apache_counts %>%
+  top_n(n = 5, wt = Frequency) %>%
+  pull(apacheadmissiondx)
+# Agrupa las categorías menos frecuentes bajo "Other"
+final_df <- final_df %>%
+  mutate(apacheadmissiondx = fct_lump(apacheadmissiondx, n = 5, other_level = "Other"))
+# Vuelve a contar la frecuencia después de la agrupación
+new_apache_counts <- final_df %>%
+  count(apacheadmissiondx, name = "Frequency")
+# Muestra el resultado
+print(new_apache_counts)
+
+final_df <- final_df %>%
+  mutate(
+    apacheadmissiondx = recode(
+      apacheadmissiondx,
+      "Renal infection/abscess" = "other",
+      "Cellulitis and localized soft tissue infections" = "other",
+      "Sepsis, other" = "other",
+      "Sepsis, gynecologic" = "other",
+      "Infection/abscess, other surgery for" = "other",
+      "Abscess/infection-cranial, surgery for" = "other",
+      "Cellulitis and localized soft tissue infections, surgery for" = "other"
+    )
+  )
+
+
 ```
 
 ### Variable unitdischargestatus (estado del que sale de la unidad)
@@ -173,6 +215,8 @@ final_df_order <- final_df_order %>%
   mutate(hist_pud_bin = replace_na(hist_pud_bin, 0)) %>%
   mutate(hist_liver_bin = replace_na(hist_liver_bin, 0))
 ```
+
+#Save final df
 ```{r}
 final_df_er_sepsis <- final_df_order %>%
   select(patientunitstayid, sex,age,ethnicity,hospitalid,er_los_hrs,sepsis_bin,infection_bin,apacheadmissiondx,unittype, unitdischargestatus,apachescoreIV,bact_resist_level, final_charlson_score, hist_metastasis_bin,hist_vih_sida_bin,hist_cirrosis_liver_bin, hist_stroke_bin,hist_renal_bin,hist_diabetes_bin,hist_cancer_bin,hist_leukemia_bin,hist_lymphoma_bin,hist_myocardial_infar_bin,hist_chf_bin,hist_pvd_bin,hist_tia_bin,hist_dementia_bin,hist_copd_bin,hist_ctd_bin,hist_pud_bin,hist_liver_bin)

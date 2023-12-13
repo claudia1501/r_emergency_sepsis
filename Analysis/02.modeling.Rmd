@@ -15,41 +15,47 @@ library(mgcv)
 library(parglm)
 library(tibble)
 library(tidyverse)
-install.packages('lme4')
 library(lme4)
 library(boot)
 library(caTools)
 library(caret)
 library(pROC)
 library(fastDummies)
+library(forcats)
+library(ggplot2)
 ```
 #Load Data
 ```{r}
 final_df_er_sepsis <- read.csv("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/selected_data.csv")
 message("Datos cargados correctamente")
 ```
+
 #Variable factor
 ```{r}
 ## Variable bact_resist_level
 final_df_er_sepsis$bact_resist_level <- as.factor(final_df_er_sepsis$bact_resist_level)
+
+## Variable ethnicity
+final_df_er_sepsis$ethnicity <- as.factor(final_df_er_sepsis$ethnicity)
+
+## Variable sepsis_bin
+final_df_er_sepsis$sepsis_bin <- as.factor(final_df_er_sepsis$sepsis_bin)
+
+## Variable infection_bin
+final_df_er_sepsis$infection_bin <- as.factor(final_df_er_sepsis$infection_bin)
 ```
 
 #Variable dummies
 ```{r}
 ## Variable apacheadmissiondx
-apacheadmissiondx_ <- factor(final_df_er_sepsis$apacheadmissiondx)
-dummies_apacheadmissiondx <- model.matrix (~apacheadmissiondx_)
+dummies_apacheadmissiondx <- dummy_cols(final_df_er_sepsis$apacheadmissiondx, remove_first_dummy = FALSE)
 
 ## Variable unittype
 unittype_ <- factor(final_df_er_sepsis$unittype)
 dummies_unittype <- model.matrix(~unittype_)
 
-## Variable ethnicity
-ethnicity_ <- factor(final_df_er_sepsis$ethnicity)
-dummies_ethnicity <- model.matrix(~ethnicity_)
-
 ## # Incluir dummies en el df final
-final_df_er_sepsis <- data.frame(final_df_er_sepsis,dummies_unittype[,2:8],dummies_ethnicity[,2:7],dummies_apacheadmissiondx[,2:12])
+final_df_er_sepsis <- data.frame(final_df_er_sepsis,dummies_unittype[,2:8],dummies_apacheadmissiondx[,2:7])
 ```
 #Creating functions
 ```{r}
@@ -124,7 +130,7 @@ place.knots(x = train_data$er_los_hrs, nk = 4)
 ```{r}
 gam_mortality_unit <- 
   gam(
-    unitdischargestatus ~ s(er_los_hrs, k = 4) + sex + age + ethnicity + hospitalid + er_los_hrs + sepsis_bin + infection_bin + apacheadmissiondx + unittype + apachescoreIV + bact_resist_level + final_charlson_score + hist_metastasis_bin + hist_vih_sida_bin + hist_cirrosis_liver_bin + hist_stroke_bin + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_leukemia_bin + hist_lymphoma_bin + hist_myocardial_infar_bin + hist_chf_bin + hist_pvd_bin + hist_tia_bin + hist_dementia_bin + hist_copd_bin + hist_ctd_bin + hist_pud_bin + hist_liver_bin + .data_Not.infection + .data_Not.resistant + .data_Resistant + unittype_CCU.CTICU + unittype_CSICU + unittype_CTICU + unittype_Med.Surg.ICU + unittype_MICU + unittype_Neuro.ICU + unittype_SICU + ethnicity_African.American + ethnicity_Asian + ethnicity_Caucasian + ethnicity_Hispanic + ethnicity_Native.American + ethnicity_Other.Unknown + apacheadmissiondx_Cellulitis.and.localized.soft.tissue.infections + apacheadmissiondx_Cellulitis.and.localized.soft.tissue.infections..surgery.for + apacheadmissiondx_Infection.abscess..other.surgery.for + apacheadmissiondx_Renal.infection.abscess + apacheadmissiondx_Sepsis..cutaneous.soft.tissue + apacheadmissiondx_Sepsis..GI + apacheadmissiondx_Sepsis..gynecologic + apacheadmissiondx_Sepsis..other + apacheadmissiondx_Sepsis..pulmonary + apacheadmissiondx_Sepsis..renal.UTI..including.bladder. + apacheadmissiondx_Sepsis..unknown
+    unitdischargestatus ~ s(er_los_hrs, k = 4) + sex + age + ethnicity + hospitalid + er_los_hrs + sepsis_bin + infection_bin + apacheadmissiondx + apachescoreIV + bact_resist_level + final_charlson_score + hist_metastasis_bin + hist_vih_sida_bin + hist_cirrosis_liver_bin + hist_stroke_bin + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_leukemia_bin + hist_lymphoma_bin + hist_myocardial_infar_bin + hist_chf_bin + hist_pvd_bin + hist_tia_bin + hist_dementia_bin + hist_copd_bin + hist_ctd_bin + hist_pud_bin + hist_liver_bin + unittype_CCU.CTICU + unittype_CSICU + unittype_CTICU + unittype_Med.Surg.ICU + unittype_MICU + unittype_Neuro.ICU + unittype_SICU + .data_Sepsis..cutaneous.soft.tissue + .data_Sepsis..GI + .data_Sepsis..pulmonary + .data_Sepsis..renal.UTI..including.bladder. + .data_Sepsis..unknown + .data_Other
 ,data = train_data,
     family = binomial()
   )
@@ -142,8 +148,6 @@ f1 <- 2 * precision * recall / (precision + recall)
 print(precision)
 print(recall)
 print(f1)
-
-
 
 # Convertir las variables a factores con los mismos niveles
 test_data$predicted_bin <- as.factor(test_data$predicted_bin)
@@ -175,30 +179,66 @@ coef_data$p_value <- p_values
 #Create a variable to store the predictor names
 coef_data$predictor <- rownames(coef_data)
 
-variable_order <- c(
-"er_los_hrs","sex (Male)", "age", "ethnicity", "hospitalid", "sepsis_bin", "infection_bin", "apacheadmissiondx", "unittype", 
-"apachescoreIV", "bact_resist_level", "final_charlson_score", "hist_metastasis_bin", "hist_vih_sida_bin", 
-"hist_cirrosis_liver_bin", "hist_stroke_bin", "hist_renal_bin", "hist_diabetes_bin", "hist_cancer_bin", 
-"hist_leukemia_bin", "hist_lymphoma_bin", "hist_myocardial_infar_bin", "hist_chf_bin", "hist_pvd_bin", 
-"hist_tia_bin", "hist_dementia_bin", "hist_copd_bin", "hist_ctd_bin", "hist_pud_bin", "hist_liver_bin", 
-".data_Not.infection", ".data_Not.resistant", ".data_Resistant", "unittype_CCU.CTICU", "unittype_CSICU", 
-"unittype_CTICU", "unittype_Med.Surg.ICU", "unittype_MICU", "unittype_Neuro.ICU", "unittype_SICU", 
-"ethnicity_African.American", "ethnicity_Asian", "ethnicity_Caucasian", "ethnicity_Hispanic", 
-"ethnicity_Native.American", "ethnicity_Other.Unknown", "apacheadmissiondx_Cellulitis.and.localized.soft.tissue.infections", 
-"apacheadmissiondx_Cellulitis.and.localized.soft.tissue.infections..surgery.for", 
-"apacheadmissiondx_Infection.abscess..other.surgery.for", "apacheadmissiondx_Renal.infection.abscess", 
-"apacheadmissiondx_Sepsis..cutaneous.soft.tissue", "apacheadmissiondx_Sepsis..GI", 
-"apacheadmissiondx_Sepsis..gynecologic", "apacheadmissiondx_Sepsis..other", "apacheadmissiondx_Sepsis..pulmonary", 
-"apacheadmissiondx_Sepsis..renal.UTI..including.bladder", "apacheadmissiondx_Sepsis..unknown"
- )
+variable_order <- rev(c(
+"Intercept", "Sex (female)", "Age (>16- 90)", "Ethnicity: Asian", "Ethnicity: Caucasian", "Ethnicity: Hispanic", "Ethnicity: American", "Ethnicity: Other", "ID hospital", "Time in emergency before ICU", "Sepsis", "Infection", "apache score IV", "bact not resistant", "bact resistant", "Charlson score", "History metastasis", "History vih/sida", "History cirrosis", "History stroke", "History renal", "History diabetes", "History cancer", "History leukemia", "History lymphoma", "History myocardial infar", "History chf", "History pvd", "History tia", "History dementia", "History copd", "History ctd", "History pud", "History liver", "Unit Type CCU CTICU", "Unit type CSICU", "Unit type CTICU", "Unit type Med.surg.ICU", "Unit type MICU", "Unit type Neuro ICU", "Unit type SICU", "Apache admission: sepsis,GI", "Apache admission:sepsis,cutaneous/soft tissue", "Apache admission:sepsis,pulmonary", "Apache admission:sepsis,renal/UTI", "Apache admission: sepsis unknown", "Apache admission:other", "er_los_hrs = 0.4068635", "er_los_hrs = 2.448543", "er_los_hrs = 1.1447e-17"
+ ))
 
 coef_data2 <- coef_data %>%
   filter(predictor != "(Intercept)") %>%
-  mutate(
+   mutate(
+     #Esto sale de las variables que forman el coef_data
     predictor = case_when(
-      #predictor == "(Intercept)" ~ "Intercept"
-      predictor == ""
-    )
+      predictor == "(Intercept)" ~ "Intercept",
+      predictor == "sex" ~ "Sex (female)",
+      predictor == "age" ~ "Age (>16- 90)",
+      predictor == "ethnicityAsian" ~ "Ethnicity: Asian",
+      predictor == "ethnicityCaucasian" ~ "Ethnicity: Caucasian",
+      predictor == "ethnicityHispanic" ~ "Ethnicity: Hispanic",
+      predictor == "ethnicityNative American" ~ "Ethnicity: American",
+      predictor == "ethnicityother/unknown" ~ "Ethnicity: Other",
+      predictor == "hospitalid" ~ "ID hospital",
+      predictor == "er_los_hrs" ~ "Time in emergency before ICU",
+      predictor == "sepsis_bin1" ~"Sepsis",
+      predictor == "infection_bin1" ~ "Infection",
+      predictor == "apachescoreIV" ~ "apache score IV",
+      predictor == "bact_resist_levelNot resistant" ~ "bact not resistant",
+      predictor == "bact_resist_levelResistant" ~ "bact resistant",
+      predictor == "final_charlson_score" ~ "Charlson score",
+      predictor == "hist_metastasis_bin" ~ "History metastasis",
+      predictor == "hist_vih_sida_bin" ~ "History vih/sida",
+      predictor == "hist_cirrosis_liver_bin" ~ "History cirrosis",
+      predictor == "hist_stroke_bin" ~ "History stroke",
+      predictor == "hist_renal_bin" ~ "History renal",
+      predictor == "hist_diabetes_bin" ~ "History diabetes",
+      predictor == "hist_cancer_bin" ~ "History cancer",
+      predictor == "hist_leukemia_bin" ~ "History leukemia",
+      predictor == "hist_lymphoma_bin" ~ "History lymphoma",
+      predictor == "hist_myocardial_infar_bin" ~ "History myocardial infar",
+      predictor == "hist_chf_bin" ~ "History chf",
+      predictor == "hist_pvd_bin " ~ "History pvd",
+      predictor == "hist_tia_bin" ~ "History tia",
+      predictor == "hist_dementia_bin" ~ "History dementia",
+      predictor == "hist_copd_bin" ~ "History copd",
+      predictor == "hist_ctd_bin" ~ "History ctd",
+      predictor == "hist_pud_bin" ~ "History pud",
+      predictor == "hist_liver_bin" ~ "History liver",
+      predictor == "unittype_CCU.CTICU" ~ "Unit Type CCU CTICU",
+      predictor == "unittype_CSICU" ~ "Unit type CSICU",
+      predictor == "unittype_CTICU" ~ "Unit type CTICU",
+      predictor == "unittype_Med.Surg.ICU" ~ "Unit type Med.surg.ICU",
+      predictor == "unittype_MICU" ~ "Unit type MICU",
+      predictor == "unittype_Neuro.ICU" ~ "Unit type Neuro ICU",
+      predictor == "unittype_SICU" ~ "Unit type SICU",
+      predictor == ".data_Sepsis..GI" ~ "Apache admission: sepsis,GI",
+      predictor == ".data_Sepsis..cutaneous.soft.tissue" ~ "Apache admission:sepsis,cutaneous/soft tissue",
+      predictor == ".data_Sepsis..pulmonary" ~ "Apache admission:sepsis,pulmonary",
+      predictor == ".data_Sepsis..renal.UTI..including.bladder." ~ "Apache admission:sepsis,renal/UTI",
+      predictor == ".data_Sepsis..unknown" ~ "Apache admission: sepsis unknown",
+      predictor == ".data_Other" ~ "Apache admission:other",
+      predictor == "s(er_los_hrs).1" ~ "er_los_hrs = 0.4068635", #la primera parte del rango de er_los_hrs, un aumento de una unidad en er_los_hrs está asociado con un aumento de 0.4068635 en el log-odds de unitdischargestatus, manteniendo constantes todas las demás variables.
+      predictor == "s(er_los_hrs).2" ~ "er_los_hrs = 2.448543", #la segunda parte del rango de er_los_hrs, un aumento de una unidad en er_los_hrs está asociado con un aumento de 2.448543 en el log-odds de unitdischargestatus, manteniendo constantes todas las demás variables.
+      predictor == "s(er_los_hrs).3" ~ "er_los_hrs = 1.1447e-17"#a tercera parte del rango de er_los_hrs, un aumento de una unidad en er_los_hrs está asociado con un cambio muy pequeño (casi cero) en el log-odds de unitdischargestatus
+    ),
     predictor = factor(predictor, levels = variable_order),
     adverse_protective = case_when(
       OR_lower > 1 & OR_upper > 1 ~ "Adverse",
@@ -208,6 +248,62 @@ coef_data2 <- coef_data %>%
     adverse_protective = factor(adverse_protective, levels = c("Adverse", "Protective", "Inconclusive"))
   ) %>% 
   arrange(predictor)
+
+#Set up the forest plot using ggplot2 
+forest_plot <- 
+  ggplot(
+    coef_data2,
+aes(x = OR, xmin = OR_lower,xmax = OR_upper, y = predictor)
+  ) + 
+  xlim(0,5) +
+  geom_point(size = 2,aes(color = adverse_protective)) +
+  geom_errorbarh(height = 0.1, aes(color = adverse_protective)) +
+  geom_vline(xintercept = 1, linetype = "solid", color = "gray50") +
+  labs(
+    x = "Odds Ratio (with 95% Confidence Interval",
+    y = "Predictor Variable",
+    title = "Odds Ratios and Confidence Intervals for mortality emergency sepsis ICU"
+  ) +
+  theme_minimal() +
+  scale_color_manual(
+    values = c("#c0392b","#27ae60","gray70"),
+    #breaks = c("#c0392b", "#27ae60", "gray90"),
+    labels = c("Adverse", "Protective", "Inconclusive"),
+    name = "Effect on Outcome"
+  ) +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    plot.title = element_text(hjust = 0.5),
+    axis.ticks = element_blank(),
+    axis.text.x = element_text(color = "#2c3e50"),
+    axis.text.y = element_text(color = "#2c3e50", hjust = 0), # Ajuste la posición horizontal del texto en el eje y
+    # axis.title.y = element_text(margin = margin(t = 0, r = 20, b= 0, l = 0)), # Ajuste los márgenes del título del ej))
+    axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0))  # Ajuste los márgenes del título del eje x
+  )
+print(forest_plot)
+```
+
+
+# GAM PLOT
+```{r}
+# Variable er_los_hrs
+gam_plot_mortality_unit <- plot(gam_mortality_unit, pages = 1)
+x <- gam_plot_mortality_unit[[1]]$x
+fit <- gam_plot_mortality_unit[[1]]$fit
+se <- gam_plot_mortality_unit[[1]]$se
+
+fit_chance <- (exp(fit) / (1 + exp(fit))) * 10
+lower_bound_chance <- (exp(fit - 2 * se) / (1 + exp(fit - 2 * se))) * 10
+upper_bound_chance <- (exp(fit + 2 * se) / (1 + exp(fit + 2 * se))) * 10
+
+df_er_los_hrs_mortality <- 
+  data.frame(
+    x = x, fit_chance = fit_chance,
+    lower_bound_chance = lower_bound_chance,upper_bound_chance = upper_bound_chance
+  )
+
 
 ```
 

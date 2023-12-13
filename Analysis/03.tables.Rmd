@@ -63,8 +63,6 @@ table1_base %>%
   add_header_above(c("","","No","Yes","","")) %>%
   save_kable("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/table1_base.html", zoom = 10)
 
-write.csv(table1_dataset, file = "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/selected_data.csv", row.names = FALSE)
-
 
 ```
 
