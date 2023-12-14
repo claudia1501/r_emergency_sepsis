@@ -7,6 +7,7 @@ library(magrittr)
 library(tableone)
 library(kableExtra)
 library(summarytools)
+library(broom)
 library(vroom)
 library(stringr)
 library(stringi)
@@ -149,6 +150,54 @@ gam_mortality_unit <-
   )
 ```
 
+```{r}
+library(ggplot2)
+library(mgcv)
+library(boot)
+
+# Función para obtener los coeficientes del modelo GAM
+gam_mortality_unit <- 
+  gam(
+    unitdischargestatus ~ s(er_los_hrs, k = 3) + sex + age + ethnicity + sepsis_bin + apachescoreIV + bact_resist_level + final_charlson_score + hist_metastasis_bin +  hist_cirrosis_liver_bin + hist_stroke_bin + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_leukemia_bin + hist_lymphoma_bin + hist_myocardial_infar_bin + hist_chf_bin + hist_pvd_bin + hist_tia_bin + hist_dementia_bin + hist_copd_bin + hist_ctd_bin + hist_pud_bin + hist_liver_bin + unittype_CCU.CTICU + unittype_CSICU + unittype_CTICU + unittype_Med.Surg.ICU + unittype_MICU + unittype_Neuro.ICU + unittype_SICU + apacheadmissiondx_sepsis_cutaneous + apacheadmissiondx_sepsis_gi + apacheadmissiondx_sepsis_pulmonary + apacheadmissiondx_sepsis_renal_uti + apacheadmissiondx_sepsis_unknown 
+,data = final_df_er_sepsis %>% filter(er_los_hrs<=24),
+    family = binomial
+  )
+
+# Realizar bootstrapping
+# Load libraries
+library(ggplot2)
+library(ggdist)
+
+# Create a data frame with coefficients, standard errors, and variables
+coef_data <- data.frame(
+  Variable = rownames(coef(gam_mortality_unit)),
+  Estimate = coef(gam_mortality_unit),
+  Std.Error = summary(gam_mortality_unit)$coefficients[, "Std. Error"]
+)
+
+# Calculate the confidence intervals
+coef_data$OR <- exp(coef_data$Estimate)
+coef_data$CI_lower <- exp(coef_data$Estimate - 1.96 * coef_data$Std.Error)
+coef_data$CI_upper <- exp(coef_data$Estimate + 1.96 * coef_data$Std.Error)
+
+# Create a forest plot
+ggplot(coef_data, aes(x = Estimate, y = Variable)) +
+  geom_pointh(aes(xmin = Lower, xmax = Upper), position = position_dodgev(height = 0.3)) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  theme_minimal() +
+  labs(title = "Forest Plot of Logistic Regression Coefficients",
+       subtitle = "95% Confidence Intervals") +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 8),
+        axis.text.x = element_text(size = 8),
+        panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
+        panel.grid.minor.x = element_blank())
+
+
+```
+
+
 
 ```{r}
 
@@ -179,9 +228,15 @@ print(confusion_matrix)
 # Odds Ratio and forest plot
 The model's coefficients, odds ratios, and corresponding confidence intervals were then extracted to generate a forest plot, offering a concise visual representation of the estimated odds ratios and their precision intervals for each predictor variable. The GAM approach provides a robust framework to explore the complex relationships between multiple predictors and a binary health outcome, facilitating a comprehensive analysis in the field of public health research.
 ```{r}
+gam_mortality_unit <- 
+  gam(
+    unitdischargestatus ~ s(er_los_hrs, k = 3) + sex + age + ethnicity + sepsis_bin + apachescoreIV + bact_resist_level + final_charlson_score + hist_metastasis_bin +  hist_cirrosis_liver_bin + hist_stroke_bin + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_leukemia_bin + hist_lymphoma_bin + hist_myocardial_infar_bin + hist_chf_bin + hist_pvd_bin + hist_tia_bin + hist_dementia_bin + hist_copd_bin + hist_ctd_bin + hist_pud_bin + hist_liver_bin + unittype_CCU.CTICU + unittype_CSICU + unittype_CTICU + unittype_Med.Surg.ICU + unittype_MICU + unittype_Neuro.ICU + unittype_SICU + apacheadmissiondx_sepsis_cutaneous + apacheadmissiondx_sepsis_gi + apacheadmissiondx_sepsis_pulmonary + apacheadmissiondx_sepsis_renal_uti + apacheadmissiondx_sepsis_unknown 
+,data = final_df_er_sepsis %>% filter(er_los_hrs<=24),
+    family = binomial
+  )
 # Extract the model coefficients and their confidence intervals
-coef_data <- data.frame(coef = coef(lr_mortality_unit))
-se <- sqrt(diag(vcov(lr_mortality_unit)))
+coef_data <- data.frame(coef = coef(gam_mortality_unit))
+se <- sqrt(diag(vcov(gam_mortality_unit)))
 z_value <- qnorm(0.976) # 95% confidence level - detection prevalence
 #Redondea decimales a 2
 coef_data <- round(coef_data, 2)
@@ -199,14 +254,14 @@ coef_data$p_value <- p_values
 coef_data$predictor <- rownames(coef_data)
 
 variable_order <- rev(c(
-"Intercept", "Sex (female)", "Age (>16- 90)", "Ethnicity: Asian", "Ethnicity: Caucasian", "Ethnicity: Hispanic", "Ethnicity: American", "Ethnicity: Other", "ID hospital", "Time in emergency before ICU", "Sepsis", "Infection", "apache score IV", "bact not resistant", "bact resistant", "Charlson score", "History metastasis","History vih/sida", "History cirrosis", "History stroke", "History renal", "History diabetes", "History cancer", "History leukemia", "History lymphoma", "History myocardial infar", "History chf", "History pvd", "History tia", "History dementia", "History copd", "History ctd", "History pud", "History liver", "Unit Type CCU CTICU", "Unit type CSICU", "Unit type CTICU", "Unit type Med.surg.ICU", "Unit type MICU", "Unit type Neuro ICU", "Unit type SICU", "Apache admission: sepsis,GI", "Apache admission:sepsis,cutaneous/soft tissue", "Apache admission:sepsis,pulmonary", "Apache admission:sepsis,renal/UTI", "Apache admission: sepsis unknown", "Apache admission:other", "er_los_hrs = 0.4068635", "er_los_hrs = 2.448543", "er_los_hrs = 1.1447e-17"
+"Intercept", "Sex (female)", "Age (>16- 90)", "Ethnicity: Asian", "Ethnicity: Caucasian", "Ethnicity: Hispanic", "Ethnicity: American", "Ethnicity: Other", "ID hospital", "Time in emergency before ICU", "Sepsis", "Infection", "apache score IV", "bact not resistant", "bact resistant", "Charlson score", "History metastasis", "History cirrosis", "History stroke", "History renal", "History diabetes", "History cancer", "History leukemia", "History lymphoma", "History myocardial infar", "History chf", "History pvd", "History tia", "History dementia", "History copd", "History ctd", "History pud", "History liver", "Unit Type CCU CTICU", "Unit type CSICU", "Unit type CTICU", "Unit type Med.surg.ICU", "Unit type MICU", "Unit type Neuro ICU", "Unit type SICU", "Apache admission: sepsis,GI", "Apache admission:sepsis,cutaneous/soft tissue", "Apache admission:sepsis,pulmonary", "Apache admission:sepsis,renal/UTI", "Apache admission: sepsis unknown", "Apache admission:other", "er_los_hrs = 0.4068635", "er_los_hrs = 2.448543"
  ))
 
 coef_data2 <- coef_data %>%
-  #filter(predictor != "(Intercept)") %>%
+  
    mutate(
      #Esto sale de las variables que forman el coef_data
-    predictor = case_when(
+   predictor = case_when(
       predictor == "(Intercept)" ~ "Intercept",
       predictor == "sex" ~ "Sex (female)",
       predictor == "age" ~ "Age (>16- 90)",
@@ -217,14 +272,12 @@ coef_data2 <- coef_data %>%
       predictor == "ethnicityother/unknown" ~ "Ethnicity: Other",
       predictor == "hospitalid" ~ "ID hospital",
       predictor == "er_los_hrs" ~ "Time in emergency before ICU",
-      predictor == "sepsis_bin1" ~"Sepsis",
-      predictor == "infection_bin1" ~ "Infection",
+      predictor == "sepsis_bin" ~"Sepsis",
       predictor == "apachescoreIV" ~ "apache score IV",
       predictor == "bact_resist_levelNot resistant" ~ "bact not resistant",
       predictor == "bact_resist_levelResistant" ~ "bact resistant",
       predictor == "final_charlson_score" ~ "Charlson score",
       predictor == "hist_metastasis_bin" ~ "History metastasis",
-      predictor == "hist_vih_sida_bin" ~ "History vih/sida",
       predictor == "hist_cirrosis_liver_bin" ~ "History cirrosis",
       predictor == "hist_stroke_bin" ~ "History stroke",
       predictor == "hist_renal_bin" ~ "History renal",
@@ -234,7 +287,7 @@ coef_data2 <- coef_data %>%
       predictor == "hist_lymphoma_bin" ~ "History lymphoma",
       predictor == "hist_myocardial_infar_bin" ~ "History myocardial infar",
       predictor == "hist_chf_bin" ~ "History chf",
-      predictor == "hist_pvd_bin " ~ "History pvd",
+      predictor == "hist_pvd_bin" ~ "History pvd",
       predictor == "hist_tia_bin" ~ "History tia",
       predictor == "hist_dementia_bin" ~ "History dementia",
       predictor == "hist_copd_bin" ~ "History copd",
@@ -256,8 +309,8 @@ coef_data2 <- coef_data %>%
       predictor == "apacheadmissiondx_other" ~ "Apache admission:other",
       predictor == "s(er_los_hrs).1" ~ "er_los_hrs = 0.4068635", #la primera parte del rango de er_los_hrs, un aumento de una unidad en er_los_hrs está asociado con un aumento de 0.4068635 en el log-odds de unitdischargestatus, manteniendo constantes todas las demás variables.
       predictor == "s(er_los_hrs).2" ~ "er_los_hrs = 2.448543", #la segunda parte del rango de er_los_hrs, un aumento de una unidad en er_los_hrs está asociado con un aumento de 2.448543 en el log-odds de unitdischargestatus, manteniendo constantes todas las demás variables.
-      predictor == "s(er_los_hrs).3" ~ "er_los_hrs = 1.1447e-17"#a tercera parte del rango de er_los_hrs, un aumento de una unidad en er_los_hrs está asociado con un cambio muy pequeño (casi cero) en el log-odds de unitdischargestatus
     ),
+    
     predictor = factor(predictor, levels = variable_order),
     adverse_protective = case_when(
       OR_lower > 1 & OR_upper > 1 ~ "Adverse",
@@ -266,7 +319,7 @@ coef_data2 <- coef_data %>%
     ),
     adverse_protective = factor(adverse_protective, levels = c("Adverse", "Protective", "Inconclusive"))
   ) %>% 
-  filter(predictor != "Intercept") %>%
+ 
   arrange(predictor)
 coef_data2$OR <- round(coef_data2$OR, 2)
 coef_data2$OR_lower <- round(coef_data2$OR_lower, 2)
@@ -280,10 +333,10 @@ aes(x = OR, xmin = OR_lower,xmax = OR_upper, y = predictor)
   ) + 
   xlim(0,5) +
   geom_point(size = 2,aes(color = adverse_protective)) +
-  geom_errorbarh(height = 0.1, aes(color = adverse_protective)) +
+  geom_errorbarh(height = 0.1,aes(color = adverse_protective)) +
   geom_vline(xintercept = 1, linetype = "solid", color = "gray50") +
   labs(
-    x = "Odds Ratio (with 95% Confidence Interval",
+    x = "Odds Ratio (with 95% Confidence Interval)",
     y = "Predictor Variable",
     title = "Odds Ratios and Confidence Intervals for mortality emergency sepsis ICU"
   ) +
@@ -306,6 +359,8 @@ aes(x = OR, xmin = OR_lower,xmax = OR_upper, y = predictor)
     axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0))  # Ajuste los márgenes del título del eje x
   )
 print(forest_plot)
+
+
 ```
 
 
