@@ -155,7 +155,6 @@ final_df <- final_df %>%
 
 ### Variable unitdischargestatus (estado del que sale de la unidad)
 ```{r}
-library(dplyr)
 
 final_df <- final_df %>%
   mutate(

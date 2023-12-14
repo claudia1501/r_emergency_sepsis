@@ -43,6 +43,9 @@ final_df_er_sepsis$sepsis_bin <- as.factor(final_df_er_sepsis$sepsis_bin)
 
 ## Variable infection_bin
 final_df_er_sepsis$infection_bin <- as.factor(final_df_er_sepsis$infection_bin)
+
+##Variable sex
+final_df_er_sepsis$sex <- as.factor(final_df_er_sepsis$sex)
 ```
 
 #Variable dummies
@@ -65,6 +68,14 @@ precision <- function(matrix){
   tp <- matrix[2,2]
   #False positive
   fp <- matrix[1,2]
+  return(tp/(tp + fp))
+}
+recall <- function(matrix){
+  #True positive
+  tp <- matrix[2,2]
+  #False positive
+  fn <- matrix[2,1]
+  return(tp/(tp+fn))
 }
 
 extract_coef_pval_OR <- function(model) {
@@ -75,8 +86,8 @@ extract_coef_pval_OR <- function(model) {
     statistic = model$coefficients / sqrt(diag(vcov(model))),
     p.value = 2 * (1 - pnorm(abs(statistic))),
     OR = round(exp(estimate), 2),
-    OR_CI_lower = round(exp(estimate - 1.96 * std.error), 2),
-    OR_CI_upper = round(exp(estimate + 1.96 * std.error), 2)
+    OR_lower = round(exp(estimate - 1.96 * std.error), 2),
+    OR_upper = round(exp(estimate + 1.96 * std.error), 2)
   ))
 }
 
@@ -184,7 +195,7 @@ variable_order <- rev(c(
  ))
 
 coef_data2 <- coef_data %>%
-  filter(predictor != "(Intercept)") %>%
+  #filter(predictor != "(Intercept)") %>%
    mutate(
      #Esto sale de las variables que forman el coef_data
     predictor = case_when(
@@ -247,6 +258,7 @@ coef_data2 <- coef_data %>%
     ),
     adverse_protective = factor(adverse_protective, levels = c("Adverse", "Protective", "Inconclusive"))
   ) %>% 
+  filter(predictor != "Intercept") %>%
   arrange(predictor)
 
 #Set up the forest plot using ggplot2 
