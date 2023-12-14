@@ -11,7 +11,7 @@ WITH pt_age AS (
   FROM `physionet-data.eicu_crd.patient`
 )
 SELECT
-  p.patientunitstayid, p.patienthealthsystemstayid, p.gender, p.ethnicity, p.hospitalid, p.wardid, p.apacheadmissiondx, p.admissionheight, p.hospitaladmitoffset, p.hospitaladmitsource, p.hospitaldischargeyear, p.hospitaldischargeoffset, p.hospitaldischargelocation, p.hospitaldischargestatus, p.unittype, p.unitvisitnumber, p.unitstaytype, p.admissionweight, p.dischargeweight, p.unitdischargeoffset, p.unitdischargelocation, p.unitdischargestatus, p.uniquepid, a.age_numeric
+  p.patientunitstayid, p.gender, a.age_numeric, p.ethnicity, p.apacheadmissiondx, p.hospitaladmitoffset, p.hospitaladmitsource, p.hospitaldischargeoffset, p.unittype, p.unitdischargeoffset,unitdischargestatus, p.uniquepid, p.unitstaytype 
 FROM
   `physionet-data.eicu_crd.patient` p
 JOIN
