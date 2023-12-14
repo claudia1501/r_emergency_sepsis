@@ -23,42 +23,12 @@ library(pROC)
 library(fastDummies)
 library(forcats)
 library(ggplot2)
+
 ```
 #Load Data
 ```{r}
 final_df_er_sepsis <- read.csv("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/selected_data.csv")
 message("Datos cargados correctamente")
-```
-
-#Variable factor
-```{r}
-## Variable bact_resist_level
-final_df_er_sepsis$bact_resist_level <- as.factor(final_df_er_sepsis$bact_resist_level)
-
-## Variable ethnicity
-final_df_er_sepsis$ethnicity <- as.factor(final_df_er_sepsis$ethnicity)
-
-## Variable sepsis_bin
-final_df_er_sepsis$sepsis_bin <- as.factor(final_df_er_sepsis$sepsis_bin)
-
-## Variable infection_bin
-final_df_er_sepsis$infection_bin <- as.factor(final_df_er_sepsis$infection_bin)
-
-##Variable sex
-final_df_er_sepsis$sex <- as.factor(final_df_er_sepsis$sex)
-```
-
-#Variable dummies
-```{r}
-## Variable apacheadmissiondx
-dummies_apacheadmissiondx <- dummy_cols(final_df_er_sepsis$apacheadmissiondx, remove_first_dummy = FALSE)
-
-## Variable unittype
-unittype_ <- factor(final_df_er_sepsis$unittype)
-dummies_unittype <- model.matrix(~unittype_)
-
-## # Incluir dummies en el df final
-final_df_er_sepsis <- data.frame(final_df_er_sepsis,dummies_unittype[,2:8],dummies_apacheadmissiondx[,2:7])
 ```
 #Creating functions
 ```{r}
@@ -141,7 +111,7 @@ place.knots(x = train_data$er_los_hrs, nk = 4)
 ```{r}
 gam_mortality_unit <- 
   gam(
-    unitdischargestatus ~ s(er_los_hrs, k = 4) + sex + age + ethnicity + hospitalid + er_los_hrs + sepsis_bin + infection_bin + apacheadmissiondx + apachescoreIV + bact_resist_level + final_charlson_score + hist_metastasis_bin + hist_vih_sida_bin + hist_cirrosis_liver_bin + hist_stroke_bin + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_leukemia_bin + hist_lymphoma_bin + hist_myocardial_infar_bin + hist_chf_bin + hist_pvd_bin + hist_tia_bin + hist_dementia_bin + hist_copd_bin + hist_ctd_bin + hist_pud_bin + hist_liver_bin + unittype_CCU.CTICU + unittype_CSICU + unittype_CTICU + unittype_Med.Surg.ICU + unittype_MICU + unittype_Neuro.ICU + unittype_SICU + .data_Sepsis..cutaneous.soft.tissue + .data_Sepsis..GI + .data_Sepsis..pulmonary + .data_Sepsis..renal.UTI..including.bladder. + .data_Sepsis..unknown + .data_Other
+    unitdischargestatus ~ s(er_los_hrs, k = 4) + sex + age + ethnicity + sepsis_bin + infection_bin + apachescoreIV + bact_resist_level + final_charlson_score + hist_metastasis_bin + hist_cirrosis_liver_bin + hist_stroke_bin + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_leukemia_bin + hist_lymphoma_bin + hist_myocardial_infar_bin + hist_chf_bin + hist_pvd_bin + hist_tia_bin + hist_dementia_bin + hist_copd_bin + hist_ctd_bin + hist_pud_bin + hist_liver_bin + unittype_CCU.CTICU + unittype_CSICU + unittype_CTICU + unittype_Med.Surg.ICU + unittype_MICU + unittype_Neuro.ICU + unittype_SICU + apacheadmissiondx_sepsis_cutaneous + apacheadmissiondx_sepsis_gi + apacheadmissiondx_sepsis_pulmonary + apacheadmissiondx_sepsis_renal_uti + apacheadmissiondx_sepsis_unknown + apacheadmissiondx_other
 ,data = train_data,
     family = binomial()
   )
@@ -168,7 +138,6 @@ test_data$unitdischargestatus <- as.factor(test_data$unitdischargestatus)
 confusion_matrix <- confusionMatrix(test_data$predicted_bin, test_data$unitdischargestatus)
 print(confusion_matrix)
 
-
 ```
 # Odds Ratio and forest plot
 The model's coefficients, odds ratios, and corresponding confidence intervals were then extracted to generate a forest plot, offering a concise visual representation of the estimated odds ratios and their precision intervals for each predictor variable. The GAM approach provides a robust framework to explore the complex relationships between multiple predictors and a binary health outcome, facilitating a comprehensive analysis in the field of public health research.
@@ -177,6 +146,8 @@ The model's coefficients, odds ratios, and corresponding confidence intervals we
 coef_data <- data.frame(coef = coef(gam_mortality_unit))
 se <- sqrt(diag(vcov(gam_mortality_unit)))
 z_value <- qnorm(0.976) # 95% confidence level - detection prevalence
+#Redondea decimales a 2
+coef_data <- round(coef_data, 2)
 
 # Calculate the odds ratios and their respective lower and upper confidence limits
 coef_data$OR <- exp(coef_data$coef)
@@ -191,7 +162,7 @@ coef_data$p_value <- p_values
 coef_data$predictor <- rownames(coef_data)
 
 variable_order <- rev(c(
-"Intercept", "Sex (female)", "Age (>16- 90)", "Ethnicity: Asian", "Ethnicity: Caucasian", "Ethnicity: Hispanic", "Ethnicity: American", "Ethnicity: Other", "ID hospital", "Time in emergency before ICU", "Sepsis", "Infection", "apache score IV", "bact not resistant", "bact resistant", "Charlson score", "History metastasis", "History vih/sida", "History cirrosis", "History stroke", "History renal", "History diabetes", "History cancer", "History leukemia", "History lymphoma", "History myocardial infar", "History chf", "History pvd", "History tia", "History dementia", "History copd", "History ctd", "History pud", "History liver", "Unit Type CCU CTICU", "Unit type CSICU", "Unit type CTICU", "Unit type Med.surg.ICU", "Unit type MICU", "Unit type Neuro ICU", "Unit type SICU", "Apache admission: sepsis,GI", "Apache admission:sepsis,cutaneous/soft tissue", "Apache admission:sepsis,pulmonary", "Apache admission:sepsis,renal/UTI", "Apache admission: sepsis unknown", "Apache admission:other", "er_los_hrs = 0.4068635", "er_los_hrs = 2.448543", "er_los_hrs = 1.1447e-17"
+"Intercept", "Sex (female)", "Age (>16- 90)", "Ethnicity: Asian", "Ethnicity: Caucasian", "Ethnicity: Hispanic", "Ethnicity: American", "Ethnicity: Other", "ID hospital", "Time in emergency before ICU", "Sepsis", "Infection", "apache score IV", "bact not resistant", "bact resistant", "Charlson score", "History metastasis", "History cirrosis", "History stroke", "History renal", "History diabetes", "History cancer", "History leukemia", "History lymphoma", "History myocardial infar", "History chf", "History pvd", "History tia", "History dementia", "History copd", "History ctd", "History pud", "History liver", "Unit Type CCU CTICU", "Unit type CSICU", "Unit type CTICU", "Unit type Med.surg.ICU", "Unit type MICU", "Unit type Neuro ICU", "Unit type SICU", "Apache admission: sepsis,GI", "Apache admission:sepsis,cutaneous/soft tissue", "Apache admission:sepsis,pulmonary", "Apache admission:sepsis,renal/UTI", "Apache admission: sepsis unknown", "Apache admission:other", "er_los_hrs = 0.4068635", "er_los_hrs = 2.448543", "er_los_hrs = 1.1447e-17"
  ))
 
 coef_data2 <- coef_data %>%
@@ -240,12 +211,12 @@ coef_data2 <- coef_data %>%
       predictor == "unittype_MICU" ~ "Unit type MICU",
       predictor == "unittype_Neuro.ICU" ~ "Unit type Neuro ICU",
       predictor == "unittype_SICU" ~ "Unit type SICU",
-      predictor == ".data_Sepsis..GI" ~ "Apache admission: sepsis,GI",
-      predictor == ".data_Sepsis..cutaneous.soft.tissue" ~ "Apache admission:sepsis,cutaneous/soft tissue",
-      predictor == ".data_Sepsis..pulmonary" ~ "Apache admission:sepsis,pulmonary",
-      predictor == ".data_Sepsis..renal.UTI..including.bladder." ~ "Apache admission:sepsis,renal/UTI",
-      predictor == ".data_Sepsis..unknown" ~ "Apache admission: sepsis unknown",
-      predictor == ".data_Other" ~ "Apache admission:other",
+      predictor == "apacheadmissiondx_sepsis_gi" ~ "Apache admission: sepsis,GI",
+      predictor == "apacheadmissiondx_sepsis_cutaneous" ~ "Apache admission:sepsis,cutaneous/soft tissue",
+      predictor == "apacheadmissiondx_sepsis_pulmonary" ~ "Apache admission:sepsis,pulmonary",
+      predictor == "apacheadmissiondx_sepsis_renal_uti" ~ "Apache admission:sepsis,renal/UTI",
+      predictor == "apacheadmissiondx_sepsis_unknown" ~ "Apache admission: sepsis unknown",
+      predictor == "apacheadmissiondx_other" ~ "Apache admission:other",
       predictor == "s(er_los_hrs).1" ~ "er_los_hrs = 0.4068635", #la primera parte del rango de er_los_hrs, un aumento de una unidad en er_los_hrs está asociado con un aumento de 0.4068635 en el log-odds de unitdischargestatus, manteniendo constantes todas las demás variables.
       predictor == "s(er_los_hrs).2" ~ "er_los_hrs = 2.448543", #la segunda parte del rango de er_los_hrs, un aumento de una unidad en er_los_hrs está asociado con un aumento de 2.448543 en el log-odds de unitdischargestatus, manteniendo constantes todas las demás variables.
       predictor == "s(er_los_hrs).3" ~ "er_los_hrs = 1.1447e-17"#a tercera parte del rango de er_los_hrs, un aumento de una unidad en er_los_hrs está asociado con un cambio muy pequeño (casi cero) en el log-odds de unitdischargestatus
@@ -260,9 +231,12 @@ coef_data2 <- coef_data %>%
   ) %>% 
   filter(predictor != "Intercept") %>%
   arrange(predictor)
-
+coef_data2$OR <- round(coef_data2$OR, 2)
+coef_data2$OR_lower <- round(coef_data2$OR_lower, 2)
+coef_data2$OR_upper <- round(coef_data2$OR_upper, 2)
+coef_data2$p_value <- round(coef_data2$p_value, 2)
 #Set up the forest plot using ggplot2 
-forest_plot <- 
+forest_plot <-
   ggplot(
     coef_data2,
 aes(x = OR, xmin = OR_lower,xmax = OR_upper, y = predictor)

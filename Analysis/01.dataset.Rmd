@@ -86,11 +86,13 @@ final_df <- Reduce(function(x,y) merge(x,y, by = "patientunitstayid", all.x = TR
 
 ## Imputations 
 ```{r}
-#Pasamos variable edad a númerica. Reemplazamos >89 = 90. Variable género a numérica: hombre = 0, mujer = 1
-final_df <- final_df %>%
-  mutate(
-    age = ifelse(age == '> 89', 90, as.numeric(as.character(age))))
 
+##Eliminamos una fila que se ha colado con edad 4 años
+final_df <- final_df %>%
+  rename(age = age_numeric) %>%
+  filter(age >= 16)
+
+#Variable género = sex, a numérica: hombre = 0, mujer = 1
 final_df <- final_df %>%
  rename(sex = gender) 
 
@@ -170,11 +172,17 @@ final_df <- final_df %>%
 final_df <- final_df %>%
   mutate(er_los_hrs = abs(hospitaladmitoffset/60)) %>%
   select(-hospitaladmitoffset)
+
+## Quitar valores muy altos considerados outcome
+umbral <- quantile(final_df$er_los_hrs, 0.95, na.rm = TRUE)
+
+final_df <- final_df %>%
+  filter(er_los_hrs <= umbral)
 ```
 ### Variable apachescore,change name and na = median
 ```{r}
 final_df <- final_df %>%
-  mutate(apachescoreIV = ifelse(is.na(apachescoreIV), median(apachescoreIV, na.rm = TRUE), apachescoreIV))
+  mutate(apachescoreIV = ifelse(is.na(apachescoreIV) | apachescoreIV == -1, median(apachescoreIV[apachescoreIV != -1], na.rm = TRUE), apachescoreIV))
 ```
 ### Variable sensitivity:level, change na = no infection
 ```{r}
@@ -188,7 +196,7 @@ final_df <- final_df %>%
 ```{r}
 #Orden de las variables
 final_df_order <- final_df %>%
-  select(patientunitstayid, sex,age,ethnicity,hospitalid,er_los_hrs,sepsis_bin,infection_bin,apacheadmissiondx,hospitaladmitsource,unittype,unitvisitnumber,unitstaytype,unitdischargelocation, unitdischargestatus,uniquepid,apachescoreIV,bact_resist_level, final_charlson_score, hist_metastasis_bin,hist_vih_sida_bin,hist_cirrosis_liver_bin, hist_stroke_bin,hist_renal_bin,hist_diabetes_bin,hist_cancer_bin,hist_leukemia_bin,hist_lymphoma_bin,hist_myocardial_infar_bin,hist_chf_bin,hist_pvd_bin,hist_tia_bin,hist_dementia_bin,hist_copd_bin,hist_ctd_bin,hist_pud_bin,hist_liver_bin)
+  select(patientunitstayid, sex,age,ethnicity,er_los_hrs,sepsis_bin,infection_bin,apacheadmissiondx,hospitaladmitsource,unittype, unitdischargestatus,apachescoreIV,bact_resist_level, final_charlson_score, hist_metastasis_bin,hist_vih_sida_bin,hist_cirrosis_liver_bin, hist_stroke_bin,hist_renal_bin,hist_diabetes_bin,hist_cancer_bin,hist_leukemia_bin,hist_lymphoma_bin,hist_myocardial_infar_bin,hist_chf_bin,hist_pvd_bin,hist_tia_bin,hist_dementia_bin,hist_copd_bin,hist_ctd_bin,hist_pud_bin,hist_liver_bin)
 ```
 
 
@@ -214,14 +222,71 @@ final_df_order <- final_df_order %>%
   mutate(hist_pud_bin = replace_na(hist_pud_bin, 0)) %>%
   mutate(hist_liver_bin = replace_na(hist_liver_bin, 0))
 ```
+#Variables dummy: unitype and apacheadmissiondx
+```{r}
+## Variable apacheadmissiondx
+dummies_apacheadmissiondx <- dummy_cols(final_df_order$apacheadmissiondx, remove_first_dummy = FALSE)
+
+## Variable unittype
+unittype_ <- factor(final_df_order$unittype)
+dummies_unittype <- model.matrix(~unittype_)
+
+## Incluir dummies en el df final
+final_df_order <- data.frame(final_df_order,dummies_unittype[,2:8],dummies_apacheadmissiondx[,2:7])
+
+## Cambiamos nombres de la variables dummies de apache para mejor entendimiento
+final_df_order <- rename(final_df_order, apacheadmissiondx_sepsis_cutaneous = .data_Sepsis..cutaneous.soft.tissue) %>%
+  rename(apacheadmissiondx_sepsis_gi = .data_Sepsis..GI) %>%
+  rename(apacheadmissiondx_sepsis_pulmonary = .data_Sepsis..pulmonary) %>%
+  rename(apacheadmissiondx_sepsis_renal_uti = .data_Sepsis..renal.UTI..including.bladder.) %>%
+  rename(apacheadmissiondx_sepsis_unknown = .data_Sepsis..unknown) %>%
+  rename(apacheadmissiondx_other = .data_Other)
+```
+
 
 #Save final df
 ```{r}
 final_df_er_sepsis <- final_df_order %>%
-  select(patientunitstayid, sex,age,ethnicity,hospitalid,er_los_hrs,sepsis_bin,infection_bin,apacheadmissiondx,unittype, unitdischargestatus,apachescoreIV,bact_resist_level, final_charlson_score, hist_metastasis_bin,hist_vih_sida_bin,hist_cirrosis_liver_bin, hist_stroke_bin,hist_renal_bin,hist_diabetes_bin,hist_cancer_bin,hist_leukemia_bin,hist_lymphoma_bin,hist_myocardial_infar_bin,hist_chf_bin,hist_pvd_bin,hist_tia_bin,hist_dementia_bin,hist_copd_bin,hist_ctd_bin,hist_pud_bin,hist_liver_bin)
+  select(patientunitstayid, sex,age,ethnicity,er_los_hrs,sepsis_bin,infection_bin,unitdischargestatus,apachescoreIV,bact_resist_level, final_charlson_score, hist_metastasis_bin,hist_vih_sida_bin,hist_cirrosis_liver_bin, hist_stroke_bin,hist_renal_bin,hist_diabetes_bin,hist_cancer_bin,hist_leukemia_bin,hist_lymphoma_bin,hist_myocardial_infar_bin,hist_chf_bin,hist_pvd_bin,hist_tia_bin,hist_dementia_bin,hist_copd_bin,hist_ctd_bin,hist_pud_bin,hist_liver_bin,unittype_CCU.CTICU,unittype_CSICU,unittype_CTICU,unittype_Med.Surg.ICU,unittype_MICU,unittype_Neuro.ICU,unittype_SICU,apacheadmissiondx_sepsis_cutaneous,apacheadmissiondx_sepsis_gi,apacheadmissiondx_sepsis_pulmonary,apacheadmissiondx_sepsis_renal_uti,apacheadmissiondx_sepsis_unknown,apacheadmissiondx_other)
 
+```
+#Variable factor: 
+```{r}
+## Variable bact_resist_level
+final_df_er_sepsis$bact_resist_level <- as.factor(final_df_er_sepsis$bact_resist_level)
+
+## Variable ethnicity
+final_df_er_sepsis$ethnicity <- as.factor(final_df_er_sepsis$ethnicity)
+
+## Variable sepsis_bin
+final_df_er_sepsis$sepsis_bin <- as.factor(final_df_er_sepsis$sepsis_bin)
+
+## Variable infection_bin
+final_df_er_sepsis$infection_bin <- as.factor(final_df_er_sepsis$infection_bin)
+
+##Variable sex
+final_df_er_sepsis$sex <- as.factor(final_df_er_sepsis$sex)
+
+##Variable unitdischargestatus
+final_df_er_sepsis$unitdischargestatus <- as.factor(final_df_er_sepsis$unitdischargestatus)
+
+##Variable dummies_apacheadmissiondx
+final_df_er_sepsis <- final_df_er_sepsis %>%
+  mutate_at(vars(apacheadmissiondx_sepsis_gi, apacheadmissiondx_sepsis_pulmonary,apacheadmissiondx_sepsis_renal_uti, apacheadmissiondx_sepsis_cutaneous,apacheadmissiondx_sepsis_unknown,apacheadmissiondx_other),as.factor)
+
+##Variable dummies_unittype
+final_df_er_sepsis <- final_df_er_sepsis %>%
+  mutate_at(vars(unittype_CCU.CTICU,unittype_CSICU,unittype_CTICU,unittype_Med.Surg.ICU,unittype_MICU,unittype_Neuro.ICU,unittype_SICU), as.factor)
+
+## Variables history
+final_df_er_sepsis <- final_df_er_sepsis %>%
+  mutate_at(vars(hist_metastasis_bin,hist_vih_sida_bin,hist_cirrosis_liver_bin,hist_stroke_bin,hist_renal_bin,hist_diabetes_bin,hist_cancer_bin,hist_leukemia_bin,hist_lymphoma_bin,hist_myocardial_infar_bin,hist_chf_bin,hist_pvd_bin,hist_tia_bin,hist_dementia_bin,hist_copd_bin,hist_ctd_bin,hist_pud_bin,hist_liver_bin), as.factor)
+```
+
+```{r}
 write.csv(final_df_er_sepsis, file = "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/selected_data.csv", row.names = FALSE)
 ```
+
 
 
 
