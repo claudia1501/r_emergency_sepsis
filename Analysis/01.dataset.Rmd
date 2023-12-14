@@ -55,7 +55,7 @@ getSQL <- function(filepath) {
 ```{r}
 bigrquery::bq_auth() # UNCOMMENT WHEN HAVEN TOCKEN ISSUES!!!
 # Establecer la conexión a BigQuery
-project_id <- readline(prompt = "Enter your project ID: ")
+project_id <- "extended-altar-382009"
 
 con <- dbConnect(
   bigrquery::bigquery(),
@@ -167,7 +167,9 @@ final_df <- final_df %>%
   )
 
 ```
+
 ### Variable hospitaladmitoffset, change name
+
 ```{r}
 final_df <- final_df %>%
   mutate(er_los_hrs = abs(hospitaladmitoffset/60)) %>%
@@ -179,12 +181,16 @@ umbral <- quantile(final_df$er_los_hrs, 0.95, na.rm = TRUE)
 final_df <- final_df %>%
   filter(er_los_hrs <= umbral)
 ```
+
 ### Variable apachescore,change name and na = median
+
 ```{r}
 final_df <- final_df %>%
   mutate(apachescoreIV = ifelse(is.na(apachescoreIV) | apachescoreIV == -1, median(apachescoreIV[apachescoreIV != -1], na.rm = TRUE), apachescoreIV))
 ```
+
 ### Variable sensitivity:level, change na = no infection
+
 ```{r}
 final_df <- final_df %>%
   mutate(
@@ -199,8 +205,8 @@ final_df_order <- final_df %>%
   select(patientunitstayid, sex,age,ethnicity,er_los_hrs,sepsis_bin,infection_bin,apacheadmissiondx,hospitaladmitsource,unittype, unitdischargestatus,apachescoreIV,bact_resist_level, final_charlson_score, hist_metastasis_bin,hist_vih_sida_bin,hist_cirrosis_liver_bin, hist_stroke_bin,hist_renal_bin,hist_diabetes_bin,hist_cancer_bin,hist_leukemia_bin,hist_lymphoma_bin,hist_myocardial_infar_bin,hist_chf_bin,hist_pvd_bin,hist_tia_bin,hist_dementia_bin,hist_copd_bin,hist_ctd_bin,hist_pud_bin,hist_liver_bin)
 ```
 
-
 ### NA filling df history.dx
+
 ```{r}
 final_df_order <- final_df_order %>%
   mutate(hist_metastasis_bin = replace_na(hist_metastasis_bin, 0)) %>%
@@ -222,7 +228,9 @@ final_df_order <- final_df_order %>%
   mutate(hist_pud_bin = replace_na(hist_pud_bin, 0)) %>%
   mutate(hist_liver_bin = replace_na(hist_liver_bin, 0))
 ```
+
 #Variables dummy: unitype and apacheadmissiondx
+
 ```{r}
 ## Variable apacheadmissiondx
 dummies_apacheadmissiondx <- dummy_cols(final_df_order$apacheadmissiondx, remove_first_dummy = FALSE)
@@ -243,14 +251,15 @@ final_df_order <- rename(final_df_order, apacheadmissiondx_sepsis_cutaneous = .d
   rename(apacheadmissiondx_other = .data_Other)
 ```
 
+# Save final df
 
-#Save final df
 ```{r}
 final_df_er_sepsis <- final_df_order %>%
   select(patientunitstayid, sex,age,ethnicity,er_los_hrs,sepsis_bin,infection_bin,unitdischargestatus,apachescoreIV,bact_resist_level, final_charlson_score, hist_metastasis_bin,hist_vih_sida_bin,hist_cirrosis_liver_bin, hist_stroke_bin,hist_renal_bin,hist_diabetes_bin,hist_cancer_bin,hist_leukemia_bin,hist_lymphoma_bin,hist_myocardial_infar_bin,hist_chf_bin,hist_pvd_bin,hist_tia_bin,hist_dementia_bin,hist_copd_bin,hist_ctd_bin,hist_pud_bin,hist_liver_bin,unittype_CCU.CTICU,unittype_CSICU,unittype_CTICU,unittype_Med.Surg.ICU,unittype_MICU,unittype_Neuro.ICU,unittype_SICU,apacheadmissiondx_sepsis_cutaneous,apacheadmissiondx_sepsis_gi,apacheadmissiondx_sepsis_pulmonary,apacheadmissiondx_sepsis_renal_uti,apacheadmissiondx_sepsis_unknown,apacheadmissiondx_other)
-
 ```
-#Variable factor: 
+
+# Variable factor
+
 ```{r}
 ## Variable bact_resist_level
 final_df_er_sepsis$bact_resist_level <- as.factor(final_df_er_sepsis$bact_resist_level)
