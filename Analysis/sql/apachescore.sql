@@ -1,4 +1,5 @@
---- https://intensivecarenetwork.com/Calculators/Files/Apache4.html
+--- https://intensivecarenetwork.com/Calculators/Files/Apache4.html. Los valores -1 
+---significan que no hay información del apache para ese paciente, es decir, valores faltantes
 SELECT
   patientunitstayid,
   MAX(apachescore) AS apachescoreIV
