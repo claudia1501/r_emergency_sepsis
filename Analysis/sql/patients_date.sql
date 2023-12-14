@@ -1,20 +1,31 @@
--- INCLUSION CRITERIA: >16 YEARS, ER ENTRY, AND SEPSIS/infection
+-- INCLUSION CRITERIA: >16 YEARS (pacientes >89 años se sustituye por 90, ya que no hay información 
+--específica de ellos ni media o mediana, y al haber pacientes de 89 si 
+--lo sustituimos por ese mismo no se diferenciaria ni se sabría que hay pacientes con mas de 90 años), 
+--ER ENTRY, AND SEPSIS/infection
+WITH pt_age AS (
+  SELECT patientunitstayid, age,
+         CASE WHEN age = '> 89' THEN 90
+         WHEN TRIM(age) = '' THEN NULL
+         ELSE CAST(age AS NUMERIC)
+         END AS age_numeric
+  FROM `physionet-data.eicu_crd.patient`
+)
 SELECT
-  patientunitstayid, patienthealthsystemstayid, gender, age, ethnicity, hospitalid, wardid,apacheadmissiondx, admissionheight, hospitaladmitoffset, hospitaladmitsource, hospitaldischargeyear, hospitaldischargeoffset, hospitaldischargelocation, hospitaldischargestatus, unittype, unitvisitnumber, unitstaytype, admissionweight, dischargeweight, unitdischargeoffset, unitdischargelocation, unitdischargestatus, 	
-uniquepid 
+  p.patientunitstayid, p.patienthealthsystemstayid, p.gender, p.ethnicity, p.hospitalid, p.wardid, p.apacheadmissiondx, p.admissionheight, p.hospitaladmitoffset, p.hospitaladmitsource, p.hospitaldischargeyear, p.hospitaldischargeoffset, p.hospitaldischargelocation, p.hospitaldischargestatus, p.unittype, p.unitvisitnumber, p.unitstaytype, p.admissionweight, p.dischargeweight, p.unitdischargeoffset, p.unitdischargelocation, p.unitdischargestatus, p.uniquepid, a.age_numeric
 FROM
-  `physionet-data.eicu_crd.patient`
+  `physionet-data.eicu_crd.patient` p
+JOIN
+  pt_age a
+ON
+  p.patientunitstayid = a.patientunitstayid
 WHERE
-  (age IS NULL
-    OR TRIM(age) = ''
-    OR age >= '16')
-  AND hospitaladmitsource = 'Emergency Department'
-  AND unitadmitsource = 'Emergency Department'
-  AND unitstaytype = 'admit'
-  AND (apacheadmissiondx LIKE '%Sepsis%'
-    OR apacheadmissiondx = 'Cellulitis and localized soft tissue infections, surgery for'
-    OR apacheadmissiondx = 'Abscess/infection-cranial, surgery for'
-    OR apacheadmissiondx = 'Renal infection/abscess'
-    OR apacheadmissiondx = 'Cellulitis and localized soft tissue infections'
-    OR apacheadmissiondx = 'Thoracotomy for thoracic/respiratory infection'
-    OR apacheadmissiondx = 'Infection/abscess, other surgery for')
+  p.hospitaladmitsource = 'Emergency Department'
+  AND p.unitadmitsource = 'Emergency Department'
+  AND p.unitstaytype = 'admit'
+  AND (p.apacheadmissiondx LIKE '%Sepsis%'
+    OR p.apacheadmissiondx = 'Cellulitis and localized soft tissue infections, surgery for'
+    OR p.apacheadmissiondx = 'Abscess/infection-cranial, surgery for'
+    OR p.apacheadmissiondx = 'Renal infection/abscess'
+    OR p.apacheadmissiondx = 'Cellulitis and localized soft tissue infections'
+    OR p.apacheadmissiondx = 'Thoracotomy for thoracic/respiratory infection'
+    OR p.apacheadmissiondx = 'Infection/abscess, other surgery for')
