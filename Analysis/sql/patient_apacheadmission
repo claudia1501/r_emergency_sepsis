@@ -1,5 +1,5 @@
 SELECT
-  patientunitstayid, gender, ethnicity, apacheadmissiondx, hospitaladmitoffset, hospitaldischargeoffset, unittype, unitadmitsource, unitdischargeoffset,unitdischargestatus, uniquepid
+  patientunitstayid, apacheadmissiondx
 FROM
   `physionet-data.eicu_crd.patient` 
 WHERE apacheadmissiondx LIKE '%Sepsis%'
