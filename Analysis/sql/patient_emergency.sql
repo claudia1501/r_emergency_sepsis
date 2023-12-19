@@ -4,4 +4,4 @@ FROM
   `physionet-data.eicu_crd.patient` 
 WHERE
   hospitaladmitsource = 'Emergency Department'
-  AND unitadmitsource = 'Emergency Department'
+
