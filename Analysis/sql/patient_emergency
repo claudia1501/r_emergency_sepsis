@@ -1,0 +1,7 @@
+SELECT
+  patientunitstayid, gender, ethnicity, hospitaladmitoffset, hospitaladmitsource, hospitaldischargeoffset, unittype, unitadmitsource, unitdischargeoffset, unitdischargestatus, uniquepid
+FROM
+  `physionet-data.eicu_crd.patient` 
+WHERE
+  hospitaladmitsource = 'Emergency Department'
+  AND unitadmitsource = 'Emergency Department'
