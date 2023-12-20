@@ -32,7 +32,9 @@ library(ggplot2)
 final_df_er_sepsis <- read.csv("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/selected_data.csv")
 message("Datos cargados correctamente")
 ```
+
 #Creating functions
+
 ```{r}
 # Metric performance
 precision <- function(matrix){
@@ -92,8 +94,8 @@ f1_score <- function(data,lev = NULL, model = NULL) {
 
 ```
 
+#General Additive Modeling (GAM): The GAM approach provides a robust framework to explore the complex relationships between multiple predictors and a binary health outcome, facilitating a comprehensive analysis in the field of public health research
 
-#General Additive Modeling (GAM): The GAM approach provides a robust framework to explore the complex relationships between multiple predictors and a binary health outcome, facilitating a comprehensive analysis in the field of public health research.
 ```{r}
 set.seed(123)
 
@@ -106,21 +108,6 @@ place.knots(x = train_data$er_los_hrs, nk = 4)
 
 
 ```
-
-```{r}
-lr_mortality_unit <- 
-  glm(
-    unitdischargestatus ~ er_los_hrs + sex + age + ethnicity + sepsis_bin + apachescoreIV + bact_resist_level + final_charlson_score + hist_metastasis_bin +  hist_cirrosis_liver_bin + hist_stroke_bin + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_leukemia_bin + hist_lymphoma_bin + hist_myocardial_infar_bin + hist_chf_bin + hist_pvd_bin + hist_tia_bin + hist_dementia_bin + hist_copd_bin + hist_ctd_bin + hist_pud_bin + hist_liver_bin + unittype_CCU.CTICU + unittype_CSICU + unittype_CTICU + unittype_Med.Surg.ICU + unittype_MICU + unittype_Neuro.ICU + unittype_SICU + apacheadmissiondx_sepsis_cutaneous + apacheadmissiondx_sepsis_gi + apacheadmissiondx_sepsis_pulmonary + apacheadmissiondx_sepsis_renal_uti + apacheadmissiondx_sepsis_unknown 
-,data = final_df_er_sepsis,
-    family = binomial()
-  )
-```
-
-```{r}
-summary(lr_mortality_unit)
-```
-
-
 ```{r}
 coef_df <- as.data.frame(summary(lr_mortality_unit)$coefficients)
 coef_df$OddsRatio<- exp(coef_df[,"Estimate"])
@@ -140,64 +127,6 @@ ggplot(coef_df, aes(x = Estimate, y = reorder(row.names(coef_df), Estimate))) +
 
 
 ##Train the GAM model
-
-```{r}
-gam_mortality_unit <- 
-  gam(
-    unitdischargestatus ~ s(er_los_hrs, k = 3) + sex + age + ethnicity + sepsis_bin + apachescoreIV + bact_resist_level + final_charlson_score + hist_metastasis_bin +  hist_cirrosis_liver_bin + hist_stroke_bin + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_leukemia_bin + hist_lymphoma_bin + hist_myocardial_infar_bin + hist_chf_bin + hist_pvd_bin + hist_tia_bin + hist_dementia_bin + hist_copd_bin + hist_ctd_bin + hist_pud_bin + hist_liver_bin + unittype_CCU.CTICU + unittype_CSICU + unittype_CTICU + unittype_Med.Surg.ICU + unittype_MICU + unittype_Neuro.ICU + unittype_SICU + apacheadmissiondx_sepsis_cutaneous + apacheadmissiondx_sepsis_gi + apacheadmissiondx_sepsis_pulmonary + apacheadmissiondx_sepsis_renal_uti + apacheadmissiondx_sepsis_unknown 
-,data = final_df_er_sepsis%>%filter(er_los_hrs<=24),
-    family = binomial()
-  )
-```
-
-```{r}
-library(ggplot2)
-library(mgcv)
-library(boot)
-
-# Función para obtener los coeficientes del modelo GAM
-gam_mortality_unit <- 
-  gam(
-    unitdischargestatus ~ s(er_los_hrs, k = 3) + sex + age + ethnicity + sepsis_bin + apachescoreIV + bact_resist_level + final_charlson_score + hist_metastasis_bin +  hist_cirrosis_liver_bin + hist_stroke_bin + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_leukemia_bin + hist_lymphoma_bin + hist_myocardial_infar_bin + hist_chf_bin + hist_pvd_bin + hist_tia_bin + hist_dementia_bin + hist_copd_bin + hist_ctd_bin + hist_pud_bin + hist_liver_bin + unittype_CCU.CTICU + unittype_CSICU + unittype_CTICU + unittype_Med.Surg.ICU + unittype_MICU + unittype_Neuro.ICU + unittype_SICU + apacheadmissiondx_sepsis_cutaneous + apacheadmissiondx_sepsis_gi + apacheadmissiondx_sepsis_pulmonary + apacheadmissiondx_sepsis_renal_uti + apacheadmissiondx_sepsis_unknown 
-,data = final_df_er_sepsis %>% filter(er_los_hrs<=24),
-    family = binomial
-  )
-
-# Realizar bootstrapping
-# Load libraries
-library(ggplot2)
-library(ggdist)
-
-# Create a data frame with coefficients, standard errors, and variables
-coef_data <- data.frame(
-  Variable = rownames(coef(gam_mortality_unit)),
-  Estimate = coef(gam_mortality_unit),
-  Std.Error = summary(gam_mortality_unit)$coefficients[, "Std. Error"]
-)
-
-# Calculate the confidence intervals
-coef_data$OR <- exp(coef_data$Estimate)
-coef_data$CI_lower <- exp(coef_data$Estimate - 1.96 * coef_data$Std.Error)
-coef_data$CI_upper <- exp(coef_data$Estimate + 1.96 * coef_data$Std.Error)
-
-# Create a forest plot
-ggplot(coef_data, aes(x = Estimate, y = Variable)) +
-  geom_pointh(aes(xmin = Lower, xmax = Upper), position = position_dodgev(height = 0.3)) +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  theme_minimal() +
-  labs(title = "Forest Plot of Logistic Regression Coefficients",
-       subtitle = "95% Confidence Intervals") +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.title.y = element_blank(),
-        axis.text.y = element_text(size = 8),
-        axis.text.x = element_text(size = 8),
-        panel.grid.major.x = element_line(color = "gray", linetype = "dashed"),
-        panel.grid.minor.x = element_blank())
-
-
-```
-
-
 
 ```{r}
 
@@ -225,13 +154,15 @@ confusion_matrix <- confusionMatrix(test_data$predicted_bin, test_data$unitdisch
 print(confusion_matrix)
 
 ```
+
 # Odds Ratio and forest plot
 The model's coefficients, odds ratios, and corresponding confidence intervals were then extracted to generate a forest plot, offering a concise visual representation of the estimated odds ratios and their precision intervals for each predictor variable. The GAM approach provides a robust framework to explore the complex relationships between multiple predictors and a binary health outcome, facilitating a comprehensive analysis in the field of public health research.
+
 ```{r}
 gam_mortality_unit <- 
   gam(
     unitdischargestatus ~ s(er_los_hrs, k = 3) + sex + age + ethnicity + sepsis_bin + apachescoreIV + bact_resist_level + final_charlson_score + hist_metastasis_bin +  hist_cirrosis_liver_bin + hist_stroke_bin + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_leukemia_bin + hist_lymphoma_bin + hist_myocardial_infar_bin + hist_chf_bin + hist_pvd_bin + hist_tia_bin + hist_dementia_bin + hist_copd_bin + hist_ctd_bin + hist_pud_bin + hist_liver_bin + unittype_CCU.CTICU + unittype_CSICU + unittype_CTICU + unittype_Med.Surg.ICU + unittype_MICU + unittype_Neuro.ICU + unittype_SICU + apacheadmissiondx_sepsis_cutaneous + apacheadmissiondx_sepsis_gi + apacheadmissiondx_sepsis_pulmonary + apacheadmissiondx_sepsis_renal_uti + apacheadmissiondx_sepsis_unknown 
-,data = final_df_er_sepsis %>% filter(er_los_hrs<=24),
+,data = final_df_er_sepsis %>% filter(er_los_hrs <= 24),
     family = binomial
   )
 # Extract the model coefficients and their confidence intervals
@@ -343,7 +274,7 @@ aes(x = OR, xmin = OR_lower,xmax = OR_upper, y = predictor)
   theme_minimal() +
   scale_color_manual(
     values = c("#c0392b","#27ae60","gray70"),
-    #breaks = c("#c0392b", "#27ae60", "gray90"),
+    #breaks = c("#c0392b", "#27ae60", "gray70"),
     labels = c("Adverse", "Protective", "Inconclusive"),
     name = "Effect on Outcome"
   ) +
@@ -365,6 +296,7 @@ print(forest_plot)
 
 
 # GAM PLOT
+
 ```{r}
 # Variable er_los_hrs
 gam_plot_mortality_unit <- plot(gam_mortality_unit, pages = 1)
@@ -372,9 +304,12 @@ x <- gam_plot_mortality_unit[[1]]$x
 fit <- gam_plot_mortality_unit[[1]]$fit
 se <- gam_plot_mortality_unit[[1]]$se
 
-fit_chance <- (exp(fit) / (1 + exp(fit))) * 10
-lower_bound_chance <- (exp(fit - 2 * se) / (1 + exp(fit - 2 * se))) * 10
-upper_bound_chance <- (exp(fit + 2 * se) / (1 + exp(fit + 2 * se))) * 10
+fit_values <- as.vector(fit)
+se_values <- as.vector(se)
+
+fit_chance <- (exp(fit) / (1 + exp(fit))) 
+lower_bound_chance <- (exp(fit - 2 * se) / (1 + exp(fit - 2 * se)))
+upper_bound_chance <- (exp(fit + 2 * se) / (1 + exp(fit + 2 * se))) 
 
 df_er_los_hrs_mortality <- 
   data.frame(
@@ -403,5 +338,6 @@ ggplot(df_er_los_hrs_mortality, aes(x = x, y = fit_chance)) +
   )
 
 ```
+
 
 
