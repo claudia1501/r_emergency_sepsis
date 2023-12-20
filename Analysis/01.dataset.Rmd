@@ -18,6 +18,8 @@ library(DBI)
 library(dplyr)
 library(summarytools)
 library(tidyverse)
+library(forcats)
+library(tidyr)
 ```
 
 # BigQuery related functions
@@ -106,9 +108,7 @@ final_df <- final_df %>%
 ```{r}
 #Variable género = sex, a numérica: hombre = 0, mujer = 1
 final_df <- final_df %>%
- rename(sex = gender) 
-
-final_df <- final_df %>%
+ rename(sex = gender) %>%
   mutate(sex = ifelse(
     sex == "Male", "0",
     ifelse(
@@ -117,7 +117,7 @@ final_df <- final_df %>%
     )
   )) %>%
   mutate(sex = as.factor(sex)) %>%
-  mutate(sex = fct_explicit_na(sex, na_level = "Unknown")) %>%
+  mutate(sex = forcats::fct_na_value_to_level(sex)) %>%
   filter(sex != "Unknown")
 ```
 
@@ -284,7 +284,7 @@ unittype_ <- factor(final_df_order$unittype)
 dummies_unittype <- dummy_cols(final_df_order$unittype, remove_first_dummy =  FALSE)
 
 # Incluir en df 
-final_df_order <- data.frame(final_df_order,dummies_unittype[,2:8])
+final_df_order <- data.frame(final_df_order,dummies_unittype[,2:9])
 
 #Cambiamos nombrs de las variables
 final_df_order <- rename(final_df_order, unit_cardiac_icu = .data_Cardiac.ICU) %>%
@@ -293,7 +293,8 @@ final_df_order <- rename(final_df_order, unit_cardiac_icu = .data_Cardiac.ICU) %
   rename(unit_cticu = .data_CTICU) %>%
   rename(unit_med_surg_icu = .data_Med.Surg.ICU) %>%
   rename(unit_micu = .data_MICU) %>%
-  rename(unit_neuro_icu = .data_Neuro.ICU)
+  rename(unit_neuro_icu = .data_Neuro.ICU) %>%
+  rename(unit_sicu = .data_SICU)
 
 ```
 
@@ -306,46 +307,47 @@ dummies_apacheadmissiondx <- dummy_cols(final_df_order$apacheadmissiondx, remove
 final_df_order <- data.frame(final_df_order,dummies_apacheadmissiondx[,2:40])
 
 ## Cambiamos nombres de la variables dummies de apache para mejor entendimiento
-final_df_order <- rename(final_df_order,rename(apacheadmissiondx_abscess_neurologic = .data_Abscess..neurologic )%>%
-                           rename(apacheadmissiondx_abscess_cranial_surgery = .data_Abscess.infection.cranial..surgery.for) %>%
-                           rename(apacheadmissiondx_ards_non_cardiogenic_pulmonary = .data_ARDS.adult.respiratory.distress.syndrome..non.cardiogenic.pulmonary.edema) %>%
-                           rename(apacheadmissiondx_arthritis_septic = .data_Arthritis..septic) %>%
-                           rename(apacheadmissiondx_cellulitis_and_localized_infections = .data_Cellulitis.and.localized.soft.tissue.infections) %>%
-                           rename(apacheadmissiondx_cellulitis_and_localized_infections_surgeryfor = 	.data_Cellulitis.and.localized.soft.tissue.infections..surgery.for) %>%
-                           rename(apacheadmissiondx_cholecystectomy_cholanfitis = .data_Cholecystectomy.cholangitis..surgery.for..gallbladder.removal.) %>%
-                           rename(apacheadmissiondx_complications_previas_gi_surgery = .data_Complications.of.previous.GI.surgery..surgery.for..anastomotic.leak..bleeding..abscess..infection..dehiscence..etc..) %>%
-                           rename(apacheadmissiondx_complications_previous_open_heart_general = .data_Complications.of.previous.open.heart.surgery..i.e..bleeding..infection.etc..) %>%
-                           rename(apacheadmissiondx_complications_previous_open_heart_specific = .data_Complications.of.previous.open.heart.surgery..surgery.for..i.e..bleeding..infection..mediastinal.rewiring.leaking.aortic.graft.etc..) %>%
-                           rename(apacheadmissiondx_diverticular_disease_surgeryfor =	.data_Diverticular.disease..surgery.for) %>%
-                           rename(apacheadmissiondx_endocarditis = 	.data_Endocarditis) %>%
-                           rename(apacheadmissiondx_fistula_surgery = .data_Fistula.abscess..surgery.for..not.inflammatory.bowel.disease.) %>%
-                           rename(apacheadmissiondx_gi_abscess_cyst = 	.data_GI.abscess.cyst) %>%
-                           rename(apacheadmissiondx_gi_abscess_cyst_primary = .data_GI.Abscess.cyst.primary..surgery.for) %>%
-                           rename(apacheadmissiondx_gi_obstuction = 	.data_GI.obstruction..surgery.for..including.lysis.of.adhesions.) %>%
-                           rename(apacheadmissiondx_gi_perforation_rupture = .data_GI.perforation.rupture) %>%
-                           rename(apacheadmissiondx_gi_perforation_rupture_surgery = 	.data_GI.perforation.rupture..surgery.for) %>%
-                           rename(apacheadmissiondx_infection_other_surgery = .data_Infection.abscess..other.surgery.for) %>%
-                           rename(apacheadmissiondx_inflammatory_bowel_disease_surgery = .data_Inflammatory.bowel.disease..surgery.for) %>%
-                           rename(apacheadmissiondx_meningitis = .data_Meningitis) %>%
-                           rename(apacheadmissiondx_pancreatitis_surgery = .data_Pancreatitis..surgery.for) %>%
-                           rename(apacheadmissiondx_peritonitis = .data_Peritonitis) %>%
-                           rename(apacheadmissiondx_peritonitis_surgery = 	.data_Peritonitis..surgery.for) %>%
-                           rename(apacheadmissiondx_pneumonia_aspiration = .data_Pneumonia..aspiration) %>%
-                           rename(apacheadmissiondx_preumonia_bacterial = .data_Pneumonia..bacterial) %>%
-                           rename(apacheadmissiondx_pneumonia_fungal = .data_Pneumonia..fungal) %>%
-                           rename(apacheadmissiondx_pnenumonia_other = .data_Pneumonia..other) %>%
-                           rename(apacheadmissiondx_penumonia_parasitic = .data_Pneumonia..parasitic..i.e...Pneumocystic.pneumonia.) %>%
-                           rename(apacheadmissiondx_penumonia_viral = 	.data_Pneumonia..viral) %>%
-                           rename(apacheadmissiondx_renal_infection = .data_Renal.infection.abscess) %>%
-                           rename(apacheadmissiondx_sepsi_Cutaneous = 	.data_Sepsis..cutaneous.soft.tissue) %>%
-                           rename(apacheadmissiondx_sepsis_gi = 	.data_Sepsis..GI) %>%
-                           rename(apacheadmissiondx_sepsis_gynecologic = .data_Sepsis..gynecologic) %>%
-                           rename(apacheadmissiondx_sepsis_other = .data_Sepsis..other) %>%
-                           rename(apacheadmissiondx_sepsis_pulmonary = .data_Sepsis..pulmonary) %>%
-                           rename(apacheadmissiondx_sepsis_renal_uti = .data_Sepsis..renal.UTI..including.bladder.) %>%
-                           rename(apacheadmissiondx_sepsis_unknown = 	.data_Sepsis..unknown) %>%
-                           rename(apacheadmisiondx_thoracotomy_for_thoracic_infection = 	.data_Thoracotomy.for.thoracic.respiratory.infection
-                           )
+final_df_order <- rename(final_df_order,apacheadmissiondx_abscess_neurologic = .data_Abscess..neurologic) %>%
+  rename(apacheadmissiondx_abscess_cranial_surgery = .data_Abscess.infection.cranial..surgery.for) %>%
+  rename(apacheadmissiondx_ards_non_cardiogenic_pulmonary = .data_ARDS.adult.respiratory.distress.syndrome..non.cardiogenic.pulmonary.edema)%>%
+  rename(apacheadmissiondx_arthritis_septic = .data_Arthritis..septic) %>%
+  rename(apacheadmissiondx_cellulitis_and_localized_infections = .data_Cellulitis.and.localized.soft.tissue.infections) %>%
+  rename(apacheadmissiondx_cellulitis_and_localized_infections_surgeryfor = .data_Cellulitis.and.localized.soft.tissue.infections..surgery.for) %>%
+  rename(apacheadmissiondx_cholecystectomy_cholanfitis = .data_Cholecystectomy.cholangitis..surgery.for..gallbladder.removal.) %>%
+  rename(apacheadmissiondx_complications_previas_gi_surgery = .data_Complications.of.previous.GI.surgery..surgery.for..anastomotic.leak..bleeding..abscess..infection..dehiscence..etc..) %>%
+  rename(apacheadmissiondx_complications_previous_open_heart_general = .data_Complications.of.previous.open.heart.surgery..i.e..bleeding..infection.etc..) %>%
+  rename(apacheadmissiondx_complications_previous_open_heart_specific = .data_Complications.of.previous.open.heart.surgery..surgery.for..i.e..bleeding..infection..mediastinal.rewiring.leaking.aortic.graft.etc..) %>%
+  rename(apacheadmissiondx_diverticular_disease_surgeryfor = .data_Diverticular.disease..surgery.for) %>%
+  rename(apacheadmissiondx_endocarditis = .data_Endocarditis) %>%
+  rename(apacheadmissiondx_fistula_surgery = .data_Fistula.abscess..surgery.for..not.inflammatory.bowel.disease.) %>%
+  rename(apacheadmissiondx_gi_abscess_cyst = .data_GI.abscess.cyst) %>%
+  rename(apacheadmissiondx_gi_abscess_cyst_primary = .data_GI.Abscess.cyst.primary..surgery.for) %>%
+  rename(apacheadmissiondx_gi_obstuction = .data_GI.obstruction..surgery.for..including.lysis.of.adhesions.) %>%
+  rename(apacheadmissiondx_gi_perforation_rupture = .data_GI.perforation.rupture) %>%
+  rename(apacheadmissiondx_gi_perforation_rupture_surgery = .data_GI.perforation.rupture..surgery.for) %>%
+  rename(apacheadmissiondx_infection_other_surgery = .data_Infection.abscess..other.surgery.for) %>%
+  rename(apacheadmissiondx_inflammatory_bowel_disease_surgery = .data_Inflammatory.bowel.disease..surgery.for) %>%
+  rename(apacheadmissiondx_meningitis = .data_Meningitis) %>%
+  rename(apacheadmissiondx_pancreatitis_surgery = .data_Pancreatitis..surgery.for) %>%
+  rename(apacheadmissiondx_peritonitis = .data_Peritonitis) %>%
+  rename(apacheadmissiondx_peritonitis_surgery = .data_Peritonitis..surgery.for) %>%
+  rename(apacheadmissiondx_pneumonia_aspiration = .data_Pneumonia..aspiration) %>%
+  rename(apacheadmissiondx_preumonia_bacterial = .data_Pneumonia..bacterial) %>%
+  rename(apacheadmissiondx_pneumonia_fungal = .data_Pneumonia..fungal) %>%
+  rename(apacheadmissiondx_pnenumonia_other = .data_Pneumonia..other) %>%
+  rename(apacheadmissiondx_penumonia_parasitic = .data_Pneumonia..parasitic..i.e...Pneumocystic.pneumonia.) %>%
+  rename(apacheadmissiondx_penumonia_viral = .data_Pneumonia..viral) %>%
+  rename(apacheadmissiondx_renal_infection = .data_Renal.infection.abscess) %>%
+  rename(apacheadmissiondx_sepsi_Cutaneous = .data_Sepsis..cutaneous.soft.tissue) %>%
+  rename(apacheadmissiondx_sepsis_gi = .data_Sepsis..GI) %>%
+  rename(apacheadmissiondx_sepsis_gynecologic = .data_Sepsis..gynecologic) %>%
+  rename(apacheadmissiondx_sepsis_other = .data_Sepsis..other) %>%
+  rename(apacheadmissiondx_sepsis_pulmonary = .data_Sepsis..pulmonary) %>%
+  rename(apacheadmissiondx_sepsis_renal_uti = .data_Sepsis..renal.UTI..including.bladder.) %>%
+  rename(apacheadmissiondx_sepsis_unknown = .data_Sepsis..unknown) %>%
+  rename(apacheadmisiondx_thoracotomy_for_thoracic_infection = .data_Thoracotomy.for.thoracic.respiratory.infection)
+  
+
 
   
 ```
@@ -354,7 +356,9 @@ final_df_order <- rename(final_df_order,rename(apacheadmissiondx_abscess_neurolo
 
 ```{r}
 final_df_er_sepsis <- final_df_order %>%
-  select(patientunitstayid, sex,age,ethnicity,er_los_hrs,sepsis_bin,infection_bin,unitdischargestatus,apachescoreIV,bact_resist_level, final_charlson_score, hist_metastasis_bin,hist_vih_sida_bin,hist_cirrosis_liver_bin, hist_stroke_bin,hist_renal_bin,hist_diabetes_bin,hist_cancer_bin,hist_leukemia_bin,hist_lymphoma_bin,hist_myocardial_infar_bin,hist_chf_bin,hist_pvd_bin,hist_tia_bin,hist_dementia_bin,hist_copd_bin,hist_ctd_bin,hist_pud_bin,hist_liver_bin,unittype_CCU.CTICU,unittype_CSICU,unittype_CTICU,unittype_Med.Surg.ICU,unittype_MICU,unittype_Neuro.ICU,unittype_SICU,apacheadmissiondx_sepsis_cutaneous,apacheadmissiondx_sepsis_gi,apacheadmissiondx_sepsis_pulmonary,apacheadmissiondx_sepsis_renal_uti,apacheadmissiondx_sepsis_unknown,apacheadmissiondx_other)
+  select(patientunitstayid, sex,age,ethnicity,er_los_hrs,unitdischargestatus,apachescoreIV,bact_resist_level, final_charlson_score, hist_metastasis_bin,hist_vih_sida_bin,hist_cirrosis_liver_bin, hist_stroke_bin,hist_renal_bin,hist_diabetes_bin,hist_cancer_bin,hist_leukemia_bin,hist_lymphoma_bin,hist_myocardial_infar_bin,hist_chf_bin,hist_pvd_bin,hist_tia_bin,hist_dementia_bin,hist_copd_bin,hist_ctd_bin,hist_pud_bin,hist_liver_bin,unit_cardiac_icu,unit_ccu_cticu,unit_csicu,unit_cticu,unit_med_surg_icu,unit_micu,unit_neuro_icu,unit_sicu,apacheadmissiondx_abscess_neurologic,apacheadmissiondx_abscess_cranial_surgery,apacheadmissiondx_ards_non_cardiogenic_pulmonary,apacheadmissiondx_arthritis_septic,apacheadmissiondx_cellulitis_and_localized_infections,apacheadmissiondx_cellulitis_and_localized_infections_surgeryfor,apacheadmissiondx_cholecystectomy_cholanfitis,apacheadmissiondx_complications_previas_gi_surgery,apacheadmissiondx_complications_previous_open_heart_general,apacheadmissiondx_complications_previous_open_heart_specific,apacheadmissiondx_diverticular_disease_surgeryfor,apacheadmissiondx_endocarditis,apacheadmissiondx_fistula_surgery,apacheadmissiondx_gi_abscess_cyst,apacheadmissiondx_gi_abscess_cyst_primary,apacheadmissiondx_gi_obstuction,apacheadmissiondx_gi_perforation_rupture,apacheadmissiondx_gi_perforation_rupture_surgery,apacheadmissiondx_infection_other_surgery,
+apacheadmissiondx_inflammatory_bowel_disease_surgery,apacheadmissiondx_meningitis,apacheadmissiondx_pancreatitis_surgery,apacheadmissiondx_peritonitis,apacheadmissiondx_peritonitis_surgery,apacheadmissiondx_pneumonia_aspiration,apacheadmissiondx_preumonia_bacterial,apacheadmissiondx_pneumonia_fungal,apacheadmissiondx_pnenumonia_other,apacheadmissiondx_penumonia_parasitic,apacheadmissiondx_penumonia_viral,apacheadmissiondx_renal_infection,apacheadmissiondx_sepsi_Cutaneous,apacheadmissiondx_sepsis_gi,apacheadmissiondx_sepsis_gynecologic,apacheadmissiondx_sepsis_other,apacheadmissiondx_sepsis_pulmonary,apacheadmissiondx_sepsis_renal_uti,apacheadmissiondx_sepsis_unknown,apacheadmisiondx_thoracotomy_for_thoracic_infection
+) #sepsis_bin,infection_bin
 ```
 
 # Variable factor
