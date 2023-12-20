@@ -160,8 +160,7 @@ The model's coefficients, odds ratios, and corresponding confidence intervals we
 ```{r}
 gam_mortality_unit <- 
   gam(
-    unitdischargestatus ~ s(er_los_hrs, k = 3) + sex + age + ethnicity + sepsis_bin + apachescoreIV + bact_resist_level + final_charlson_score + hist_metastasis_bin +  hist_cirrosis_liver_bin + hist_stroke_bin + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_leukemia_bin + hist_lymphoma_bin + hist_myocardial_infar_bin + hist_chf_bin + hist_pvd_bin + hist_tia_bin + hist_dementia_bin + hist_copd_bin + hist_ctd_bin + hist_pud_bin + hist_liver_bin + unittype_CCU.CTICU + unittype_CSICU + unittype_CTICU + unittype_Med.Surg.ICU + unittype_MICU + unittype_Neuro.ICU + unittype_SICU + apacheadmissiondx_sepsis_cutaneous + apacheadmissiondx_sepsis_gi + apacheadmissiondx_sepsis_pulmonary + apacheadmissiondx_sepsis_renal_uti + apacheadmissiondx_sepsis_unknown 
-,data = final_df_er_sepsis %>% filter(er_los_hrs <= 24),
+    unitdischargestatus ~ s(er_los_hrs, k = 3) sex + age + ethnicity + apachescoreIV + bact_resist_level + final_charlson_score + hist_metastasis_bin + hist_vih_sida_bin + hist_cirrosis_liver_bin + hist_stroke_bin + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_leukemia_bin + hist_lymphoma_bin + hist_myocardial_infar_bin + hist_chf_bin + hist_pvd_bin + hist_tia_bin + hist_dementia_bin + hist_copd_bin + hist_ctd_bin + hist_pud_bin + hist_liver_bin + unit_cardiac_icu + unit_ccu_cticu + unit_csicu + unit_cticu + unit_med_surg_icu + unit_micu + unit_neuro_icu + unit_sicu + apacheadmissiondx_abscess_neurologic + apacheadmissiondx_abscess_cranial_surgery + apacheadmissiondx_ards_non_cardiogenic_pulmonary + apacheadmissiondx_arthritis_septic + apacheadmissiondx_cellulitis_and_localized_infections + apacheadmissiondx_cellulitis_and_localized_infections_surgeryfor + apacheadmissiondx_cholecystectomy_cholanfitis + apacheadmissiondx_complications_previas_gi_surgery + apacheadmissiondx_complications_previous_open_heart_general + apacheadmissiondx_complications_previous_open_heart_specific + apacheadmissiondx_diverticular_disease_surgeryfor + apacheadmissiondx_endocarditis + apacheadmissiondx_fistula_surgery + apacheadmissiondx_gi_abscess_cyst + apacheadmissiondx_gi_abscess_cyst_primary + apacheadmissiondx_gi_obstuction + apacheadmissiondx_gi_perforation_rupture + apacheadmissiondx_gi_perforation_rupture_surgery + apacheadmissiondx_infection_other_surgery + apacheadmissiondx_inflammatory_bowel_disease_surgery + apacheadmissiondx_meningitis + apacheadmissiondx_pancreatitis_surgery + apacheadmissiondx_peritonitis + apacheadmissiondx_peritonitis_surgery + apacheadmissiondx_pneumonia_aspiration + apacheadmissiondx_pneumonia_bacterial + apacheadmissiondx_pneumonia_fungal + apacheadmissiondx_pneumonia_other + apacheadmissiondx_pneumonia_parasitic + apacheadmissiondx_pneumonia_viral + apacheadmissiondx_renal_infection + apacheadmissiondx_sepsi_Cutaneous + apacheadmissiondx_sepsis_gi + apacheadmissiondx_sepsis_gynecologic + apacheadmissiondx_sepsis_other + apacheadmissiondx_sepsis_pulmonary + apacheadmissiondx_sepsis_renal_uti + apacheadmissiondx_sepsis_unknown + apacheadmisiondx_thoracotomy_for_thoracic_infection ,data = final_df_er_sepsis,
     family = binomial
   )
 # Extract the model coefficients and their confidence intervals
@@ -184,8 +183,11 @@ coef_data$p_value <- p_values
 coef_data$predictor <- rownames(coef_data)
 
 variable_order <- rev(c(
-"Intercept", "Sex (female)", "Age (>16- 90)", "Ethnicity: Asian", "Ethnicity: Caucasian", "Ethnicity: Hispanic", "Ethnicity: American", "Ethnicity: Other", "ID hospital", "Time in emergency before ICU", "Sepsis", "Infection", "apache score IV", "bact not resistant", "bact resistant", "Charlson score", "History metastasis", "History cirrosis", "History stroke", "History renal", "History diabetes", "History cancer", "History leukemia", "History lymphoma", "History myocardial infar", "History chf", "History pvd", "History tia", "History dementia", "History copd", "History ctd", "History pud", "History liver", "Unit Type CCU CTICU", "Unit type CSICU", "Unit type CTICU", "Unit type Med.surg.ICU", "Unit type MICU", "Unit type Neuro ICU", "Unit type SICU", "Apache admission: sepsis,GI", "Apache admission:sepsis,cutaneous/soft tissue", "Apache admission:sepsis,pulmonary", "Apache admission:sepsis,renal/UTI", "Apache admission: sepsis unknown", "Apache admission:other", "er_los_hrs = 0.4068635", "er_los_hrs = 2.448543"
- ))
+"Intercept","Sex (female)","Age (>16- 90)","Ethnicity: Asian","Ethnicity: Caucasian","Ethnicity: Hispanic","Ethnicity: American","Ethnicity: Other",        "ID hospital","Time in emergency before ICU","apache score IV","bact not resistant","bact resistant","Charlson score","History metastasis","History cirrosis","History stroke","History renal","History diabetes","History cancer","History leukemia","History lymphoma","History myocardial infar","History chf","History pvd","History tia","History dementia","History copd","History ctd","History pud","History liver","Unit Cardiac ICU","Unit type CCU CTICU","Unit type CSICU","Unit type CTICU","Unit type Med-Surg ICU","Unit type MICU","Unit type neuro ICU","Unit type SICU","Apache admission: abscess neurologic",
+"Apache admission: abscess cranial surgery","Apache admission: ARDS non cardiogenic pulmonary","Apache admission: arthritis septic","Apache admission: cellulitis and localized infections","Apache admission: cellulitis and localized infections surgery","Apache admission: cholecystectomy cholanfitis","Apache admission: complications previas GI surgery","Apache admission: complications previousopen heart general","Apache admission: complications previous open heart specifit","Apache admission: diverticular disease surgery","Apache admission: endocarditis","Apache admission: fistula surgery","Apache admission: GI abscess cyst","Apache admission: GI abscess cyst primary","Apache admission: GI obstuction","Apache admission: GI perforation rupture","Apache admission: GI perforation rupture surgery","Apache admission: infection other surgery","Apache admission: inflamatory bowel disease surgery","Apache admission: meningitis",
+"Apache admission: pancreatitis surgery","Apache admission: peritonitis","Apache admission: peritonitis surgery","Apache admission: pneumonia aspiration",
+"Apache admission: pneumonia bacterial","Apache admission: pneumonia fungal","Apache admission: pneumonia other","Apache admission: pneumonia parasitic","Apache admission: pneumonia viral","Apache admission: renal infection","Apache admission:sepsis,cutaneous/soft tissue","Apache admission: sepsis,GI","Apache admission:sepsis gynecologic","Apache admission: sepsis other","Apache admission: sepsis pulmonaty","Apache admission: sepsis renal uti",
+"Apache admission: sepsis unknown","Apache admission: thoracotomy for thoracic infection","er_los_hrs = 0.4068635","er_los_hrs = 2.448543" ))
 
 coef_data2 <- coef_data %>%
   
@@ -202,7 +204,7 @@ coef_data2 <- coef_data %>%
       predictor == "ethnicityother/unknown" ~ "Ethnicity: Other",
       predictor == "hospitalid" ~ "ID hospital",
       predictor == "er_los_hrs" ~ "Time in emergency before ICU",
-      predictor == "sepsis_bin" ~"Sepsis",
+      #predictor == "sepsis_bin" ~"Sepsis",
       predictor == "apachescoreIV" ~ "apache score IV",
       predictor == "bact_resist_levelNot resistant" ~ "bact not resistant",
       predictor == "bact_resist_levelResistant" ~ "bact resistant",
@@ -224,19 +226,53 @@ coef_data2 <- coef_data %>%
       predictor == "hist_ctd_bin" ~ "History ctd",
       predictor == "hist_pud_bin" ~ "History pud",
       predictor == "hist_liver_bin" ~ "History liver",
-      predictor == "unittype_CCU.CTICU" ~ "Unit Type CCU CTICU",
-      predictor == "unittype_CSICU" ~ "Unit type CSICU",
-      predictor == "unittype_CTICU" ~ "Unit type CTICU",
-      predictor == "unittype_Med.Surg.ICU" ~ "Unit type Med.surg.ICU",
-      predictor == "unittype_MICU" ~ "Unit type MICU",
-      predictor == "unittype_Neuro.ICU" ~ "Unit type Neuro ICU",
-      predictor == "unittype_SICU" ~ "Unit type SICU",
-      predictor == "apacheadmissiondx_sepsis_gi" ~ "Apache admission: sepsis,GI",
+      predictor == "unit_cardiac_icu" ~ "Unit Cardiac ICU",
+      predictor == "unit_ccu_cticu" ~ "Unit type CCU CTICU",
+      predictor == "unit_csicu" ~ "Unit type CSICU",
+      predictor == "unit_cticu," ~ "Unit type CTICU",
+      predictor == "unit_med_surg_icu" ~ "Unit type Med-Surg ICU",
+      predictor == "unit_micu" ~ "Unit type MICU",
+      predictor == "unit_neuro_icu" ~ "Unit type neuro ICU",
+      predictor == "unit_sicu" ~ "Unit type SICU",
+      predictor == "apacheadmissiondx_abscess_neurologic" ~ "Apache admission: abscess neurologic",
+      predictor == "apacheadmissiondx_abscess_cranial_surgery" ~ "Apache admission: abscess cranial surgery",
+      predictor == "apacheadmissiondx_ards_non_cardiogenic_pulmonary" ~ "Apache admission: ARDS non cardiogenic pulmonary",
+      predictor == "apacheadmissiondx_arthritis_septic" ~ "Apache admission: arthritis septic",
+      predictor == "apacheadmissiondx_cellulitis_and_localized_infections" ~ "Apache admission: cellulitis and localized infections",
+      predictor == "apacheadmissiondx_cellulitis_and_localized_infections_surgeryfor" ~ "Apache admission: cellulitis and localized infections surgery",
+      predictor == "apacheadmissiondx_cholecystectomy_cholanfitis" ~ "Apache admission: cholecystectomy cholanfitis",
+      predictor == "apacheadmissiondx_complications_previas_gi_surgery" ~ "Apache admission: complications previas GI surgery",
+      predictor == "apacheadmissiondx_complications_previous_open_heart_general" ~ "Apache admission: complications previousopen heart general",
+      predictor == "apacheadmissiondx_complications_previous_open_heart_specific" ~ "Apache admission: complications previous open heart specifit",
+      predictor == "apacheadmissiondx_diverticular_disease_surgeryfor" ~ "Apache admission: diverticular disease surgery",
+      predictor == "apacheadmissiondx_endocarditis" ~ "Apache admission: endocarditis",
+      predictor == "apacheadmissiondx_fistula_surgery" ~ "Apache admission: fistula surgery",
+      predictor == "apacheadmissiondx_gi_abscess_cyst" ~ "Apache admission: GI abscess cyst",
+      predictor == "apacheadmissiondx_gi_abscess_cyst_primary" ~ "Apache admission: GI abscess cyst primary",
+      predictor == "apacheadmissiondx_gi_obstuction" ~ "Apache admission: GI obstuction",
+      predictor == "apacheadmissiondx_gi_perforation_rupture" ~ "Apache admission: GI perforation rupture",
+      predictor == "apacheadmissiondx_gi_perforation_rupture_surgery" ~ "Apache admission: GI perforation rupture surgery",
+      prefictor == "apacheadmissiondx_infection_other_surgery"~"Apache admission: infection other surgery",
+      predictor == "apacheadmissiondx_inflammatory_bowel_disease_surgery" ~ "Apache admission: inflamatory bowel disease surgery",
+      predictor == "apacheadmissiondx_meningitis" ~ "Apache admission: meningitis",
+      predictor == "apacheadmissiondx_pancreatitis_surgery" ~ "Apache admission: pancreatitis surgery",
+      predictor == "apacheadmissiondx_peritonitis" ~ "Apache admission: peritonitis",
+      predictor == "apacheadmissiondx_peritonitis_surgery" ~ "Apache admission: peritonitis surgery",
+      predictor == "apacheadmissiondx_pneumonia_aspiration" ~ "Apache admission: pneumonia aspiration",
+      predictor == "apacheadmissiondx_preumonia_bacterial" ~ "Apache admission: pneumonia bacterial",
+      predictor == "apacheadmissiondx_pneumonia_fungal" ~ "Apache admission: pneumonia fungal",
+      predictor == "apacheadmissiondx_pneumonia_other" ~ "Apache admission: pneumonia other",
+      predictor == "apacheadmissiondx_pneumonia_parasitic" ~ "Apache admission: pneumonia parasitic",
+      predictor == "apacheadmissiondx_penumonia_viral" ~ "Apache admission: pneumonia viral",
+      predictor == "apacheadmissiondx_renal_infection" ~ "Apache admission: renal infection",
       predictor == "apacheadmissiondx_sepsis_cutaneous" ~ "Apache admission:sepsis,cutaneous/soft tissue",
-      predictor == "apacheadmissiondx_sepsis_pulmonary" ~ "Apache admission:sepsis,pulmonary",
-      predictor == "apacheadmissiondx_sepsis_renal_uti" ~ "Apache admission:sepsis,renal/UTI",
+      predictor == "apacheadmissiondx_sepsis_gi" ~ "Apache admission: sepsis,GI",
+      predictor == "apacheadmissiondx_sepsis_gynecologic" ~ "Apache admission:sepsis gynecologic",
+      predictor == "apacheadmissiondx_sepsis_other" ~ "Apache admission: sepsis other",
+      predictor == "apacheadmissiondx_sepsis_pulmonary" ~ "Apache admission: sepsis pulmonaty",
+      predictor == "apacheadmissiondx_sepsis_renal_uti" ~ "Apache admission: sepsis renal uti",
       predictor == "apacheadmissiondx_sepsis_unknown" ~ "Apache admission: sepsis unknown",
-      predictor == "apacheadmissiondx_other" ~ "Apache admission:other",
+      predictor == "apacheadmisiondx_thoracotomy_for_thoracic_infection" ~ "Apache admission: thoracotomy for thoracic infection"
       predictor == "s(er_los_hrs).1" ~ "er_los_hrs = 0.4068635", #la primera parte del rango de er_los_hrs, un aumento de una unidad en er_los_hrs está asociado con un aumento de 0.4068635 en el log-odds de unitdischargestatus, manteniendo constantes todas las demás variables.
       predictor == "s(er_los_hrs).2" ~ "er_los_hrs = 2.448543", #la segunda parte del rango de er_los_hrs, un aumento de una unidad en er_los_hrs está asociado con un aumento de 2.448543 en el log-odds de unitdischargestatus, manteniendo constantes todas las demás variables.
     ),
