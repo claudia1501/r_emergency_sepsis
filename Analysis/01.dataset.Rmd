@@ -125,16 +125,20 @@ final_df <- final_df %>%
 final_df <- final_df %>%
   drop_na(sex)
 ```
-
-### Ethnicity
+### Hospital admit source (emergency department)
 
 ```{r}
-# Change empty string = other
+#Emilinamos NA
 final_df <- final_df %>%
-  mutate(ethnicity = ifelse(ethnicity == "", "other", ethnicity)) %>%
-   mutate(ethnicity = ifelse(ethnicity %in% c("other", "Other/Unknown"), "other/unknown", ethnicity))
+  drop_na(hospitaladmitsource)
+```
 
-final_df$ethnicity <- as.factor(final_df$ethnicity)
+### Unitstaytype
+
+```{r}
+# Eliminamos NA
+final_df <- final_df %>%
+  drop_na(unitstaytype)
 ```
 
 ### Hospitaladmitoffset
@@ -150,38 +154,42 @@ final_df <- final_df %>%
   filter(er_los_hrs <= 24)
 ```
 
-### Stratify: Unitdischargestatus (estado del que sale de la unidad)
-
+###Unittype
 ```{r}
+# Variable unittype, agrupar en las 5 categorías con mayor valor y el resto agrupadas en la variable other (esto se hace debido a la poca cantidad que hay de muchas de esas categorias de tipo de UCI)
+
+# Cuenta la frecuencia de cada categoría
+unittype_counts <- final_df %>%
+  count(unittype, name = "Frequency")
+# Identifica las 5 categorías más frecuentes
+top_categories <- unittype_counts %>%
+  top_n(n = 4, wt = Frequency) %>%
+  pull(unittype)
+# Agrupa las categorías menos frecuentes bajo "Other"
+final_df <- final_df %>%
+ mutate(unittype = fct_lump(unittype, n = 4, other_level = "Other"))
+# Vuelve a contar la frecuencia después de la agrupación
+new_unittype_counts <- final_df %>%
+  count(unittype, name = "Frequency")
+# Muestra el resultado
+print(new_unittype_counts)
+
+#Lista de las 5 categorías con más valores
+top_categories <- c( "Cardiac ICU",
+  "CCU-CTICU",
+  "Med-Surg ICU",
+  "MICU",
+  "Other")
+
+# Crear una nueva variable "apacheadmissiondx_recoded" que recodifique las categorías no incluidas en el ranking como "Other"
 final_df <- final_df %>%
   mutate(
-    unitdischargestatus = ifelse(
-      unitdischargestatus == 'Expired', '1',
-      ifelse(trimws(unitdischargestatus) == '' | unitdischargestatus == 'Alive', '0', NA_character_)
-    )
-  )
-
-final_df$unitdischargestatus <- as.factor(final_df$unitdischargestatus)
-```
-
-### Unitstaytype
-
-```{r}
-# Eliminamos NA
-final_df <- final_df %>%
-  drop_na(unitstaytype)
-```
-
-
-### Variables sepsis and infection (bin)
-
-```{r}
-#Variable sepsis_bin and infection_bin. Change: no = 0; sí = 1
-#final_df <- final_df %>%
-#  mutate(sepsis_bin = recode(sepsis_bin, "no" = "0")) %>%
-#  mutate(sepsis_bin = recode(sepsis_bin, "sí" = "1")) %>%
-#  mutate(infection_bin = recode(infection_bin, "no" = "0")) %>%
-#  mutate(infection_bin = recode(infection_bin, "sí" = "1"))
+    unittype = recode(
+      unittype,
+      "CSICU" = "Other",
+      "CTICU" = "Other",
+      "Neuro ICU" = "Other",
+      "SICU" = "Other"))
 ```
 
 ### Apache admission dx
@@ -222,6 +230,9 @@ final_df <- final_df %>%
   mutate(
     apacheadmissiondx = recode(
       apacheadmissiondx,
+      "Sepsis, cutaneous/soft tissue" = "Other",
+      "Pneumonia, other" = "Other",
+      "Pneumonia, aspiration" = "Other",
       "Renal infection/abscess" = "Other",
       "Cellulitis and localized soft tissue infections" = "Other",
       "Sepsis, other" = "Other",
@@ -257,55 +268,53 @@ final_df <- final_df %>%
       "Myositis, viral"  = "Other" 
     )
   )
-
-
-
 ```
-###Unittype
+
+### Ethnicity
+
 ```{r}
-# Variable unittype, agrupar en las 5 categorías con mayor valor y el resto agrupadas en la variable other (esto se hace debido a la poca cantidad que hay de muchas de esas categorias de tipo de UCI)
-
-# Cuenta la frecuencia de cada categoría
-unittype_counts <- final_df %>%
-  count(unittype, name = "Frequency")
-# Identifica las 5 categorías más frecuentes
-top_categories <- unittype_counts %>%
-  top_n(n = 4, wt = Frequency) %>%
-  pull(unittype)
-# Agrupa las categorías menos frecuentes bajo "Other"
+# Change empty string = other
 final_df <- final_df %>%
- mutate(unittype = fct_lump(unittype, n = 4, other_level = "Other"))
-# Vuelve a contar la frecuencia después de la agrupación
-new_unittype_counts <- final_df %>%
-  count(unittype, name = "Frequency")
-# Muestra el resultado
-print(new_unittype_counts)
+  mutate(ethnicity = ifelse(ethnicity == "", "other", ethnicity)) %>%
+   mutate(ethnicity = ifelse(ethnicity %in% c("other", "Other/Unknown"), "other/unknown", ethnicity))
 
-#Lista de las 5 categorías con más valores
-top_categories <- c( "Cardiac ICU",
-  "CCU-CTICU",
-  "Med-Surg ICU",
-  "MICU",
-  "Other")
+final_df$ethnicity <- as.factor(final_df$ethnicity)
+```
 
-# Crear una nueva variable "apacheadmissiondx_recoded" que recodifique las categorías no incluidas en el ranking como "Other"
+
+
+### Stratify: Unitdischargestatus (estado del que sale de la unidad)
+
+```{r}
 final_df <- final_df %>%
   mutate(
-    unittype = recode(
-      unittype,
-      "CSICU" = "Other",
-      "CTICU" = "Other",
-      "Neuro ICU" = "Other",
-      "SICU" = "Other"))
+    unitdischargestatus = ifelse(
+      unitdischargestatus == 'Expired', '1',
+      ifelse(trimws(unitdischargestatus) == '' | unitdischargestatus == 'Alive', '0', NA_character_)
+    )
+  )
+
+final_df$unitdischargestatus <- as.factor(final_df$unitdischargestatus)
 ```
 
-### Hospital admit source (emergency department)
+#
+
+
+### Variables sepsis and infection (bin)
 
 ```{r}
-#Emilinamos NA
-final_df <- final_df %>%
-  drop_na(hospitaladmitsource)
+#Variable sepsis_bin and infection_bin. Change: no = 0; sí = 1
+#final_df <- final_df %>%
+#  mutate(sepsis_bin = recode(sepsis_bin, "no" = "0")) %>%
+#  mutate(sepsis_bin = recode(sepsis_bin, "sí" = "1")) %>%
+#  mutate(infection_bin = recode(infection_bin, "no" = "0")) %>%
+#  mutate(infection_bin = recode(infection_bin, "sí" = "1"))
 ```
+
+
+
+
+
 
 ### Apachescore,change name and na = median
 
