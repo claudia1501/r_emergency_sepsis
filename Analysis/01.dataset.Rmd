@@ -88,8 +88,9 @@ history_dx <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgenc
 # Joining 1º df
 ```{r}
 #Unimos df
-dfs_to_join <- list(patients_total,patients_admit,patients_apacheadmission,patients_emergency, apachescore,sensitivitylevel,charlson_score,history_dx) #apache_sepsis,apache_infection
+dfs_to_join <- list(patients_total,patients_admit,patients_apacheadmission,patients_emergency,apachescore,sensitivitylevel,charlson_score,history_dx) #apache_sepsis,apache_infection 
 final_df <- Reduce(function(x,y) merge(x,y, by = "patientunitstayid", all.x = TRUE), dfs_to_join)
+
 ```
 
 ## Imputations 
@@ -121,7 +122,7 @@ final_df <- final_df %>%
   #mutate(sex = forcats::fct_na_value_to_level(sex)) %>%
   filter(sex != "Unknown")
 
-final_df_2 <- final_df %>%
+final_df <- final_df %>%
   drop_na(sex)
 ```
 
@@ -197,11 +198,11 @@ apache_counts <- final_df %>%
   count(apacheadmissiondx, name = "Frequency")
 # Identifica las 5 categorías más frecuentes
 top_categories <- apache_counts %>%
-  top_n(n = 10, wt = Frequency) %>%
+  top_n(n = 5, wt = Frequency) %>%
   pull(apacheadmissiondx)
 # Agrupa las categorías menos frecuentes bajo "Other"
 final_df <- final_df %>%
- mutate(apacheadmissiondx = fct_lump(apacheadmissiondx, n = 10, other_level = "Other"))
+ mutate(apacheadmissiondx = fct_lump(apacheadmissiondx, n = 5, other_level = "Other"))
 # Vuelve a contar la frecuencia después de la agrupación
 new_apache_counts <- final_df %>%
   count(apacheadmissiondx, name = "Frequency")
@@ -209,12 +210,8 @@ new_apache_counts <- final_df %>%
 print(new_apache_counts)
 
 #Lista de las 10 categorías con más valores
-top_categories <- c( "Pneumonia, aspiration",
-  "Pneumonia, bacterial",
-  "Pneumonia, other",
-  "Sepsis, cutaneous/soft tissue",
+top_categories <- c("Pneumonia, bacterial",
   "Sepsis, GI",
-  "Sepsis, other",
   "Sepsis, pulmonary",
   "Sepsis, renal/UTI (including bladder)",
   "Sepsis, unknown",
@@ -263,6 +260,43 @@ final_df <- final_df %>%
 
 
 
+```
+###Unittype
+```{r}
+# Variable unittype, agrupar en las 5 categorías con mayor valor y el resto agrupadas en la variable other (esto se hace debido a la poca cantidad que hay de muchas de esas categorias de tipo de UCI)
+
+# Cuenta la frecuencia de cada categoría
+unittype_counts <- final_df %>%
+  count(unittype, name = "Frequency")
+# Identifica las 5 categorías más frecuentes
+top_categories <- unittype_counts %>%
+  top_n(n = 4, wt = Frequency) %>%
+  pull(unittype)
+# Agrupa las categorías menos frecuentes bajo "Other"
+final_df <- final_df %>%
+ mutate(unittype = fct_lump(unittype, n = 4, other_level = "Other"))
+# Vuelve a contar la frecuencia después de la agrupación
+new_unittype_counts <- final_df %>%
+  count(unittype, name = "Frequency")
+# Muestra el resultado
+print(new_unittype_counts)
+
+#Lista de las 5 categorías con más valores
+top_categories <- c( "Cardiac ICU",
+  "CCU-CTICU",
+  "Med-Surg ICU",
+  "MICU",
+  "Other")
+
+# Crear una nueva variable "apacheadmissiondx_recoded" que recodifique las categorías no incluidas en el ranking como "Other"
+final_df <- final_df %>%
+  mutate(
+    unittype = recode(
+      unittype,
+      "CSICU" = "Other",
+      "CTICU" = "Other",
+      "Neuro ICU" = "Other",
+      "SICU" = "Other"))
 ```
 
 ### Hospital admit source (emergency department)
@@ -332,17 +366,14 @@ unittype_ <- factor(final_df_order$unittype)
 dummies_unittype <- dummy_cols(final_df_order$unittype, remove_first_dummy =  FALSE)
 
 # Incluir en df 
-final_df_order <- data.frame(final_df_order,dummies_unittype[,2:9])
+final_df_order <- data.frame(final_df_order,dummies_unittype[,2:6])
 
 #Cambiamos nombrs de las variables
 final_df_order <- rename(final_df_order, unit_cardiac_icu = .data_Cardiac.ICU) %>%
   rename(unit_ccu_cticu = .data_CCU.CTICU) %>%
-  rename(unit_csicu = .data_CSICU) %>%
-  rename(unit_cticu = .data_CTICU) %>%
   rename(unit_med_surg_icu = .data_Med.Surg.ICU) %>%
   rename(unit_micu = .data_MICU) %>%
-  rename(unit_neuro_icu = .data_Neuro.ICU) %>%
-  rename(unit_sicu = .data_SICU)
+  rename(unit_other = .data_Other) %>%
 
 ```
 
