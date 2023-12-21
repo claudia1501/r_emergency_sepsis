@@ -32,6 +32,12 @@ final_df_er_sepsis <- read.csv("C:/Users/cjimenez10J/Documents/projects/r_urgenc
 message("Datos cargados correctamente")
 ```
 
+```{r}
+
+```
+
+
+
 #Creating functions
 
 ```{r}
@@ -104,230 +110,76 @@ split_data <- balanced_split(final_df_er_sepsis, "unitdischargestatus", split_ra
 train_data <- split_data$train_data
 test_data <- split_data$test_data
 place.knots(x = train_data$er_los_hrs, nk = 4)
-
-
-```
-```{r}
-coef_df <- as.data.frame(summary(lr_mortality_unit)$coefficients)
-coef_df$OddsRatio<- exp(coef_df[,"Estimate"])
-coef_df$LowerCI <- exp(coef_df[, "Estimate"] - 1.96 * coef_df[, "Std. Error"])
-coef_df$UpperCI<- exp(coef_df[, "Estimate"] + 1.96 * coef_df[, "Std. Error"])
-```
-
-```{r}
-# Define the plot
-ggplot(coef_df, aes(x = Estimate, y = reorder(row.names(coef_df), Estimate))) +
-  geom_point() +
-  geom_errorbarh(aes(xmin = LowerCI, xmax = UpperCI)) +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  xlab("Estimate") +
-  ylab("Variable") 
 ```
 
 
-##Train the GAM model
-
-```{r}
-
-
-# Make predictions on the test data
-test_data$predicted <- predict(gam_mortality_unit, newdata = test_data, type = "response")
-test_data$predicted_bin <- ifelse(test_data$predicted > 0.5, 1, 0)
-
-# Calculate precision, recall, and F1 score
-precision <- sum(test_data$predicted_bin == 1 & test_data$unitdischargestatus == "Sí") / sum(test_data$predicted_bin == 1)
-recall <- sum(test_data$predicted_bin == 1 & test_data$unitdischargestatus == "Sí") / sum(test_data$unitdischargestatus == "Sí")
-f1 <- 2 * precision * recall / (precision + recall)
-
-# Print the results
-print(precision)
-print(recall)
-print(f1)
-
-# Convertir las variables a factores con los mismos niveles
-test_data$predicted_bin <- as.factor(test_data$predicted_bin)
-test_data$unitdischargestatus <- as.factor(test_data$unitdischargestatus)
-
-# Calcular la matriz de confusión
-confusion_matrix <- confusionMatrix(test_data$predicted_bin, test_data$unitdischargestatus)
-print(confusion_matrix)
-
-```
 
 # Odds Ratio and forest plot
 The model's coefficients, odds ratios, and corresponding confidence intervals were then extracted to generate a forest plot, offering a concise visual representation of the estimated odds ratios and their precision intervals for each predictor variable. The GAM approach provides a robust framework to explore the complex relationships between multiple predictors and a binary health outcome, facilitating a comprehensive analysis in the field of public health research.
-
 ```{r}
 gam_mortality_unit <- 
   gam(
-    unitdischargestatus ~ s(er_los_hrs, k = 3) sex + age + ethnicity + apachescoreIV + bact_resist_level + final_charlson_score + hist_metastasis_bin + hist_vih_sida_bin + hist_cirrosis_liver_bin + hist_stroke_bin + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_leukemia_bin + hist_lymphoma_bin + hist_myocardial_infar_bin + hist_chf_bin + hist_pvd_bin + hist_tia_bin + hist_dementia_bin + hist_copd_bin + hist_ctd_bin + hist_pud_bin + hist_liver_bin + unit_cardiac_icu + unit_ccu_cticu + unit_csicu + unit_cticu + unit_med_surg_icu + unit_micu + unit_neuro_icu + unit_sicu + apacheadmissiondx_abscess_neurologic + apacheadmissiondx_abscess_cranial_surgery + apacheadmissiondx_ards_non_cardiogenic_pulmonary + apacheadmissiondx_arthritis_septic + apacheadmissiondx_cellulitis_and_localized_infections + apacheadmissiondx_cellulitis_and_localized_infections_surgeryfor + apacheadmissiondx_cholecystectomy_cholanfitis + apacheadmissiondx_complications_previas_gi_surgery + apacheadmissiondx_complications_previous_open_heart_general + apacheadmissiondx_complications_previous_open_heart_specific + apacheadmissiondx_diverticular_disease_surgeryfor + apacheadmissiondx_endocarditis + apacheadmissiondx_fistula_surgery + apacheadmissiondx_gi_abscess_cyst + apacheadmissiondx_gi_abscess_cyst_primary + apacheadmissiondx_gi_obstuction + apacheadmissiondx_gi_perforation_rupture + apacheadmissiondx_gi_perforation_rupture_surgery + apacheadmissiondx_infection_other_surgery + apacheadmissiondx_inflammatory_bowel_disease_surgery + apacheadmissiondx_meningitis + apacheadmissiondx_pancreatitis_surgery + apacheadmissiondx_peritonitis + apacheadmissiondx_peritonitis_surgery + apacheadmissiondx_pneumonia_aspiration + apacheadmissiondx_pneumonia_bacterial + apacheadmissiondx_pneumonia_fungal + apacheadmissiondx_pneumonia_other + apacheadmissiondx_pneumonia_parasitic + apacheadmissiondx_pneumonia_viral + apacheadmissiondx_renal_infection + apacheadmissiondx_sepsi_Cutaneous + apacheadmissiondx_sepsis_gi + apacheadmissiondx_sepsis_gynecologic + apacheadmissiondx_sepsis_other + apacheadmissiondx_sepsis_pulmonary + apacheadmissiondx_sepsis_renal_uti + apacheadmissiondx_sepsis_unknown + apacheadmisiondx_thoracotomy_for_thoracic_infection ,data = final_df_er_sepsis,
-    family = binomial
-  )
-# Extract the model coefficients and their confidence intervals
+    unitdischargestatus ~ s(er_los_hrs, k = 3) + sex + age + ethnicity + apachescoreIV + bact_resist_level + final_charlson_score + hist_metastasis_bin + hist_vih_sida_bin + hist_cirrosis_liver_bin + hist_stroke_bin + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_leukemia_bin + hist_lymphoma_bin + hist_myocardial_infar_bin + hist_chf_bin + hist_pvd_bin + hist_tia_bin + hist_dementia_bin + hist_copd_bin + hist_ctd_bin + hist_pud_bin + hist_liver_bin +  apacheadmissiondx_other +  apacheadmissiondx_pneumonia_bacterial + apacheadmissiondx_pneumonia_other + apacheadmissiondx_sepsi_Cutaneous + apacheadmissiondx_sepsis_gi + apacheadmissiondx_sepsis_pulmonary + apacheadmissiondx_sepsis_renal_uti + apacheadmissiondx_sepsis_unknown ,data = final_df_er_sepsis,
+    family = binomial) #apacheadmissiondx_pneumonia_aspiration + unit_cardiac_icu + unit_ccu_cticu + unit_csicu + unit_cticu + unit_med_surg_icu + unit_micu + unit_neuro_icu + unit_sicu
+
 coef_data <- data.frame(coef = coef(gam_mortality_unit))
 se <- sqrt(diag(vcov(gam_mortality_unit)))
 z_value <- qnorm(0.976) # 95% confidence level - detection prevalence
 #Redondea decimales a 2
-coef_data <- round(coef_data, 2)
 
+coef_data <- round(coef_data, 2)
 # Calculate the odds ratios and their respective lower and upper confidence limits
 coef_data$OR <- exp(coef_data$coef)
-coef_data$OR_lower <- exp(coef_data$coef + z_value * se)
-coef_data$OR_upper <- exp(coef_data$coef - z_value * se)
+coef_data$OR_lower <- exp(coef_data$coef - qnorm(0.975) * se)  # Usar 0.975 para obtener IC del 95%
+coef_data$OR_upper <- exp(coef_data$coef + qnorm(0.975) * se)
 
-# Calculate the p-values
-p_values <- 2 * (1 - pnorm(abs(coef_data$coef) / se))
-coef_data$p_value <- p_values
+library(ggplot2)
 
-#Create a variable to store the predictor names
-coef_data$predictor <- rownames(coef_data)
+# Filtrar las variables de interés
+#coef_data2 <- coef_data %>%
+#  filter(predictor != "(Intercept)")
 
-variable_order <- rev(c(
-"Intercept","Sex (female)","Age (>16- 90)","Ethnicity: Asian","Ethnicity: Caucasian","Ethnicity: Hispanic","Ethnicity: American","Ethnicity: Other",        "ID hospital","Time in emergency before ICU","apache score IV","bact not resistant","bact resistant","Charlson score","History metastasis","History cirrosis","History stroke","History renal","History diabetes","History cancer","History leukemia","History lymphoma","History myocardial infar","History chf","History pvd","History tia","History dementia","History copd","History ctd","History pud","History liver","Unit Cardiac ICU","Unit type CCU CTICU","Unit type CSICU","Unit type CTICU","Unit type Med-Surg ICU","Unit type MICU","Unit type neuro ICU","Unit type SICU","Apache admission: abscess neurologic",
-"Apache admission: abscess cranial surgery","Apache admission: ARDS non cardiogenic pulmonary","Apache admission: arthritis septic","Apache admission: cellulitis and localized infections","Apache admission: cellulitis and localized infections surgery","Apache admission: cholecystectomy cholanfitis","Apache admission: complications previas GI surgery","Apache admission: complications previousopen heart general","Apache admission: complications previous open heart specifit","Apache admission: diverticular disease surgery","Apache admission: endocarditis","Apache admission: fistula surgery","Apache admission: GI abscess cyst","Apache admission: GI abscess cyst primary","Apache admission: GI obstuction","Apache admission: GI perforation rupture","Apache admission: GI perforation rupture surgery","Apache admission: infection other surgery","Apache admission: inflamatory bowel disease surgery","Apache admission: meningitis",
-"Apache admission: pancreatitis surgery","Apache admission: peritonitis","Apache admission: peritonitis surgery","Apache admission: pneumonia aspiration",
-"Apache admission: pneumonia bacterial","Apache admission: pneumonia fungal","Apache admission: pneumonia other","Apache admission: pneumonia parasitic","Apache admission: pneumonia viral","Apache admission: renal infection","Apache admission:sepsis,cutaneous/soft tissue","Apache admission: sepsis,GI","Apache admission:sepsis gynecologic","Apache admission: sepsis other","Apache admission: sepsis pulmonaty","Apache admission: sepsis renal uti",
-"Apache admission: sepsis unknown","Apache admission: thoracotomy for thoracic infection","er_los_hrs = 0.4068635","er_los_hrs = 2.448543" ))
-
-coef_data2 <- coef_data %>%
-  
-   mutate(
-     #Esto sale de las variables que forman el coef_data
-   predictor = case_when(
-      predictor == "(Intercept)" ~ "Intercept",
-      predictor == "sex" ~ "Sex (female)",
-      predictor == "age" ~ "Age (>16- 90)",
-      predictor == "ethnicityAsian" ~ "Ethnicity: Asian",
-      predictor == "ethnicityCaucasian" ~ "Ethnicity: Caucasian",
-      predictor == "ethnicityHispanic" ~ "Ethnicity: Hispanic",
-      predictor == "ethnicityNative American" ~ "Ethnicity: American",
-      predictor == "ethnicityother/unknown" ~ "Ethnicity: Other",
-      predictor == "hospitalid" ~ "ID hospital",
-      predictor == "er_los_hrs" ~ "Time in emergency before ICU",
-      #predictor == "sepsis_bin" ~"Sepsis",
-      predictor == "apachescoreIV" ~ "apache score IV",
-      predictor == "bact_resist_levelNot resistant" ~ "bact not resistant",
-      predictor == "bact_resist_levelResistant" ~ "bact resistant",
-      predictor == "final_charlson_score" ~ "Charlson score",
-      predictor == "hist_metastasis_bin" ~ "History metastasis",
-      predictor == "hist_cirrosis_liver_bin" ~ "History cirrosis",
-      predictor == "hist_stroke_bin" ~ "History stroke",
-      predictor == "hist_renal_bin" ~ "History renal",
-      predictor == "hist_diabetes_bin" ~ "History diabetes",
-      predictor == "hist_cancer_bin" ~ "History cancer",
-      predictor == "hist_leukemia_bin" ~ "History leukemia",
-      predictor == "hist_lymphoma_bin" ~ "History lymphoma",
-      predictor == "hist_myocardial_infar_bin" ~ "History myocardial infar",
-      predictor == "hist_chf_bin" ~ "History chf",
-      predictor == "hist_pvd_bin" ~ "History pvd",
-      predictor == "hist_tia_bin" ~ "History tia",
-      predictor == "hist_dementia_bin" ~ "History dementia",
-      predictor == "hist_copd_bin" ~ "History copd",
-      predictor == "hist_ctd_bin" ~ "History ctd",
-      predictor == "hist_pud_bin" ~ "History pud",
-      predictor == "hist_liver_bin" ~ "History liver",
-      predictor == "unit_cardiac_icu" ~ "Unit Cardiac ICU",
-      predictor == "unit_ccu_cticu" ~ "Unit type CCU CTICU",
-      predictor == "unit_csicu" ~ "Unit type CSICU",
-      predictor == "unit_cticu," ~ "Unit type CTICU",
-      predictor == "unit_med_surg_icu" ~ "Unit type Med-Surg ICU",
-      predictor == "unit_micu" ~ "Unit type MICU",
-      predictor == "unit_neuro_icu" ~ "Unit type neuro ICU",
-      predictor == "unit_sicu" ~ "Unit type SICU",
-      predictor == "apacheadmissiondx_abscess_neurologic" ~ "Apache admission: abscess neurologic",
-      predictor == "apacheadmissiondx_abscess_cranial_surgery" ~ "Apache admission: abscess cranial surgery",
-      predictor == "apacheadmissiondx_ards_non_cardiogenic_pulmonary" ~ "Apache admission: ARDS non cardiogenic pulmonary",
-      predictor == "apacheadmissiondx_arthritis_septic" ~ "Apache admission: arthritis septic",
-      predictor == "apacheadmissiondx_cellulitis_and_localized_infections" ~ "Apache admission: cellulitis and localized infections",
-      predictor == "apacheadmissiondx_cellulitis_and_localized_infections_surgeryfor" ~ "Apache admission: cellulitis and localized infections surgery",
-      predictor == "apacheadmissiondx_cholecystectomy_cholanfitis" ~ "Apache admission: cholecystectomy cholanfitis",
-      predictor == "apacheadmissiondx_complications_previas_gi_surgery" ~ "Apache admission: complications previas GI surgery",
-      predictor == "apacheadmissiondx_complications_previous_open_heart_general" ~ "Apache admission: complications previousopen heart general",
-      predictor == "apacheadmissiondx_complications_previous_open_heart_specific" ~ "Apache admission: complications previous open heart specifit",
-      predictor == "apacheadmissiondx_diverticular_disease_surgeryfor" ~ "Apache admission: diverticular disease surgery",
-      predictor == "apacheadmissiondx_endocarditis" ~ "Apache admission: endocarditis",
-      predictor == "apacheadmissiondx_fistula_surgery" ~ "Apache admission: fistula surgery",
-      predictor == "apacheadmissiondx_gi_abscess_cyst" ~ "Apache admission: GI abscess cyst",
-      predictor == "apacheadmissiondx_gi_abscess_cyst_primary" ~ "Apache admission: GI abscess cyst primary",
-      predictor == "apacheadmissiondx_gi_obstuction" ~ "Apache admission: GI obstuction",
-      predictor == "apacheadmissiondx_gi_perforation_rupture" ~ "Apache admission: GI perforation rupture",
-      predictor == "apacheadmissiondx_gi_perforation_rupture_surgery" ~ "Apache admission: GI perforation rupture surgery",
-      prefictor == "apacheadmissiondx_infection_other_surgery"~"Apache admission: infection other surgery",
-      predictor == "apacheadmissiondx_inflammatory_bowel_disease_surgery" ~ "Apache admission: inflamatory bowel disease surgery",
-      predictor == "apacheadmissiondx_meningitis" ~ "Apache admission: meningitis",
-      predictor == "apacheadmissiondx_pancreatitis_surgery" ~ "Apache admission: pancreatitis surgery",
-      predictor == "apacheadmissiondx_peritonitis" ~ "Apache admission: peritonitis",
-      predictor == "apacheadmissiondx_peritonitis_surgery" ~ "Apache admission: peritonitis surgery",
-      predictor == "apacheadmissiondx_pneumonia_aspiration" ~ "Apache admission: pneumonia aspiration",
-      predictor == "apacheadmissiondx_preumonia_bacterial" ~ "Apache admission: pneumonia bacterial",
-      predictor == "apacheadmissiondx_pneumonia_fungal" ~ "Apache admission: pneumonia fungal",
-      predictor == "apacheadmissiondx_pneumonia_other" ~ "Apache admission: pneumonia other",
-      predictor == "apacheadmissiondx_pneumonia_parasitic" ~ "Apache admission: pneumonia parasitic",
-      predictor == "apacheadmissiondx_penumonia_viral" ~ "Apache admission: pneumonia viral",
-      predictor == "apacheadmissiondx_renal_infection" ~ "Apache admission: renal infection",
-      predictor == "apacheadmissiondx_sepsis_cutaneous" ~ "Apache admission:sepsis,cutaneous/soft tissue",
-      predictor == "apacheadmissiondx_sepsis_gi" ~ "Apache admission: sepsis,GI",
-      predictor == "apacheadmissiondx_sepsis_gynecologic" ~ "Apache admission:sepsis gynecologic",
-      predictor == "apacheadmissiondx_sepsis_other" ~ "Apache admission: sepsis other",
-      predictor == "apacheadmissiondx_sepsis_pulmonary" ~ "Apache admission: sepsis pulmonaty",
-      predictor == "apacheadmissiondx_sepsis_renal_uti" ~ "Apache admission: sepsis renal uti",
-      predictor == "apacheadmissiondx_sepsis_unknown" ~ "Apache admission: sepsis unknown",
-      predictor == "apacheadmisiondx_thoracotomy_for_thoracic_infection" ~ "Apache admission: thoracotomy for thoracic infection"
-      predictor == "s(er_los_hrs).1" ~ "er_los_hrs = 0.4068635", #la primera parte del rango de er_los_hrs, un aumento de una unidad en er_los_hrs está asociado con un aumento de 0.4068635 en el log-odds de unitdischargestatus, manteniendo constantes todas las demás variables.
-      predictor == "s(er_los_hrs).2" ~ "er_los_hrs = 2.448543", #la segunda parte del rango de er_los_hrs, un aumento de una unidad en er_los_hrs está asociado con un aumento de 2.448543 en el log-odds de unitdischargestatus, manteniendo constantes todas las demás variables.
-    ),
-    
-    predictor = factor(predictor, levels = variable_order),
+# Calcular la categoría (Adverse, Protective, Inconclusive)
+coef_data <- coef_data %>%
+  mutate(
     adverse_protective = case_when(
       OR_lower > 1 & OR_upper > 1 ~ "Adverse",
       OR_lower < 1 & OR_upper < 1 ~ "Protective",
       TRUE ~ "Inconclusive"
-    ),
-    adverse_protective = factor(adverse_protective, levels = c("Adverse", "Protective", "Inconclusive"))
-  ) %>% 
- 
-  arrange(predictor)
-coef_data2$OR <- round(coef_data2$OR, 2)
-coef_data2$OR_lower <- round(coef_data2$OR_lower, 2)
-coef_data2$OR_upper <- round(coef_data2$OR_upper, 2)
-coef_data2$p_value <- round(coef_data2$p_value, 2)
-#Set up the forest plot using ggplot2 
-forest_plot <-
-  ggplot(
-    coef_data2,
-aes(x = OR, xmin = OR_lower,xmax = OR_upper, y = predictor)
-  ) + 
-  xlim(0,5) +
-  geom_point(size = 2,aes(color = adverse_protective)) +
-  geom_errorbarh(height = 0.1,aes(color = adverse_protective)) +
+    )
+  )
+coef_data$adverse_protective <- as.factor(coef_data$adverse_protective)
+
+# Crear el forest plot
+forest_plot <- ggplot(coef_data, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = rownames(coef_data))) +
+  geom_point(aes(color = adverse_protective), size = 2) +
+  geom_errorbarh(aes(color = adverse_protective), height = 0.1, linewidth = 0.5) +
   geom_vline(xintercept = 1, linetype = "solid", color = "gray50") +
   labs(
     x = "Odds Ratio (with 95% Confidence Interval)",
     y = "Predictor Variable",
     title = "Odds Ratios and Confidence Intervals for mortality emergency sepsis ICU"
   ) +
-  theme_minimal() +
-  scale_color_manual(
-    values = c("#c0392b","#27ae60","gray70"),
-    #breaks = c("#c0392b", "#27ae60", "gray70"),
-    labels = c("Adverse", "Protective", "Inconclusive"),
-    name = "Effect on Outcome"
-  ) +
-  theme(
-    plot.background = element_rect(fill = "white"),
-    panel.grid.major.y = element_blank(),
-    panel.grid.minor.y = element_blank(),
-    plot.title = element_text(hjust = 0.5),
-    axis.ticks = element_blank(),
-    axis.text.x = element_text(color = "#2c3e50"),
-    axis.text.y = element_text(color = "#2c3e50", hjust = 0), # Ajuste la posición horizontal del texto en el eje y
-    # axis.title.y = element_text(margin = margin(t = 0, r = 20, b= 0, l = 0)), # Ajuste los márgenes del título del ej))
-    axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0))  # Ajuste los márgenes del título del eje x
-  )
+  scale_color_manual(values = c("Adverse" = "#c0392b", "Protective" = "#27ae60", "Inconclusive" = "gray70"))
+  theme_minimal() 
+#    theme(
+#    plot.background = element_rect(fill = "white"),
+#    panel.grid.major.y = element_blank(),
+#    panel.grid.minor.y = element_blank(),
+#    plot.title = element_text(hjust = 0.5),
+#    axis.ticks = element_blank(),
+#    axis.text.x = element_text(color = "#2c3e50"),
+#    axis.text.y = element_text(color = "#2c3e50", hjust = 0), # Ajuste la posición horizontal del texto en el eje y
+#    # axis.title.y = element_text(margin = margin(t = 0, r = 20, b= 0, l = 0)), # Ajuste los márgenes del título del ej))
+#    axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0))  # Ajuste los márgenes del título del eje x
+#  )
+
 print(forest_plot)
 
-
 ```
+
+
+
 
 
 # GAM PLOT
@@ -352,7 +204,6 @@ df_er_los_hrs_mortality <-
     lower_bound_chance = lower_bound_chance,upper_bound_chance = upper_bound_chance
   )
 
-
 ```
 
 ```{r}
@@ -373,6 +224,11 @@ ggplot(df_er_los_hrs_mortality, aes(x = x, y = fit_chance)) +
   )
 
 ```
+
+
+
+
+
 
 
 
