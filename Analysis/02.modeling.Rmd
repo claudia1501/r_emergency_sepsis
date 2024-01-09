@@ -137,7 +137,7 @@ The model's coefficients, odds ratios, and corresponding confidence intervals we
 ```{r}
 gam_mortality_unit <- 
   gam(
-    unitdischargestatus ~ s(er_los_hrs, k = 3) + sex + age + ethnicity + unitdischargestatus + apachescoreIV + bact_resist_level + final_charlson_score + hist_stroke_bin + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_myocardial_infar_bin + hist_chf_bin + hist_copd_bin + unit_med_surg_icu + unit_micu + apacheadmissiondx_other + apacheadmissiondx_pneumonia_bacterial + apacheadmissiondx_sepsis_pulmonary + apacheadmissiondx_sepsis_renal_uti + apacheadmissiondx_sepsis_unknown ,data = final_df_er_sepsis,
+    unitdischargestatus ~ s(er_los_hrs, k = 3) + sex + age + ethnicity + unitdischargestatus + apachescoreIV + bact_resist_level + final_charlson_score + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + unittype + apacheadmissiondx, data = final_df_er_sepsis,
     family = binomial) 
 
 coef_data <- data.frame(coef = coef(gam_mortality_unit))
