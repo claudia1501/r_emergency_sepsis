@@ -32,29 +32,7 @@ final_df_er_sepsis <- read.csv("C:/Users/cjimenez10J/Documents/projects/r_urgenc
 message("Datos cargados correctamente")
 ```
 
-```{r}
-final_df_er_sepsis <- final_df_order %>%
-  select(patientunitstayid, sex,age,ethnicity,er_los_hrs,unitdischargestatus,apachescoreIV,bact_resist_level, final_charlson_score, hist_metastasis_bin,hist_vih_sida_bin,hist_cirrosis_liver_bin, hist_stroke_bin,hist_renal_bin,hist_diabetes_bin,hist_cancer_bin,hist_leukemia_bin,hist_lymphoma_bin,hist_myocardial_infar_bin,hist_chf_bin,hist_pvd_bin,hist_tia_bin,hist_dementia_bin,hist_copd_bin,hist_ctd_bin,hist_pud_bin,hist_liver_bin,unit_cardiac_icu,unit_ccu_cticu,unit_csicu,unit_cticu,unit_med_surg_icu,unit_micu,unit_neuro_icu,unit_sicu,apacheadmissiondx_other, apacheadmissiondx_pneumonia_aspiration, apacheadmissiondx_pneumonia_bacterial, apacheadmissiondx_pneumonia_other, apacheadmissiondx_sepsi_Cutaneous, apacheadmissiondx_sepsis_gi, apacheadmissiondx_sepsis_pulmonary, apacheadmissiondx_sepsis_renal_uti, apacheadmissiondx_sepsis_unknown)
-# Create a sample data frame (replace this with your actual data)
-set.seed(42)
-# Check the variance of each variable
-variance_info <- apply(final_df_er_sepsis, 2, var)
-print("Variance of each variable:")
-print(variance_info)
-# Identify variables with less than 0.16 variance
-low_variance_vars <- nearZeroVar(final_df_er_sepsis, saveMetrics = TRUE)
-# Display information about variables with low variance
-print(low_variance_vars)
-
-# Remove variables with less than 0.16 variance
-data_cleaned <- final_df_er_sepsis[, -low_variance_vars$nzv]
-
-# Display the cleaned data frame
-print("Data frame after removing low variance variables:")
-print(data_cleaned)
-```
-
-
+## Use train and test
 
 #Creating functions
 
@@ -67,6 +45,7 @@ precision <- function(matrix){
   fp <- matrix[1,2]
   return(tp/(tp + fp))
 }
+
 recall <- function(matrix){
   #True positive
   tp <- matrix[2,2]
@@ -105,8 +84,10 @@ for (outcome in unique_outcomes) {
   train_data <- rbind(train_data,train_subset)
   test_data <- rbind(test_data, test_subset)
 }
+  
  return(list(train_data = train_data,test_data = test_data))
 }
+
 #Define the evaluation metric
 f1_score <- function(data,lev = NULL, model = NULL) {
   predictions <- factor(ifelse(data$obs == lev[1], lev[1], lev[2]), levels = lev)
@@ -130,15 +111,38 @@ test_data <- split_data$test_data
 place.knots(x = train_data$er_los_hrs, nk = 4)
 ```
 
+```{r}
+# Train the GAM model with test and train
+gam_mortality_unit <- 
+  gam(
+    unitdischargestatus ~ s(er_los_hrs, k = 3) + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + unittype + apacheadmissiondx, data = train_data,
+    family = binomial)  #bact_resist_level +
+
+# Make predictions on the test data
+test_data$predicted <- predict(gam_mortality_unit, newdata = test_data, type = "response")
+test_data$predicted_bin <- ifelse(test_data$predicted > 0.5,1,0)
+
+# Calculate precision, recall, and F1 score
+precision <- sum(test_data$predicted_bin == 1 & test_data$unitdischargestatus == "Sí") / sum(test_data$predicted_bin == 1)
+recall <- sum(test_data$predicted_bin == 1 & test_data$unitdischargestatus == "Sí") / sum(test_data$unitdischargestatus == "Sí")
+f1 <- 2 * precision * recall / (precision + recall)
+
+# Print the results
+print(precision)
+print(recall)
+print(f1)
+```
 
 
-# Odds Ratio and forest plot
+## Odds Ratio and forest plot df total
 The model's coefficients, odds ratios, and corresponding confidence intervals were then extracted to generate a forest plot, offering a concise visual representation of the estimated odds ratios and their precision intervals for each predictor variable. The GAM approach provides a robust framework to explore the complex relationships between multiple predictors and a binary health outcome, facilitating a comprehensive analysis in the field of public health research.
+
 ```{r}
 gam_mortality_unit <- 
   gam(
-    unitdischargestatus ~ s(er_los_hrs, k = 3) + sex + age + ethnicity + unitdischargestatus + apachescoreIV + bact_resist_level + final_charlson_score + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + unittype + apacheadmissiondx, data = final_df_er_sepsis,
-    family = binomial) 
+    unitdischargestatus ~ s(er_los_hrs, k = 3) + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + unittype + apacheadmissiondx, data = final_df_er_sepsis,
+    family = binomial)  #bact_resist_level +
+
 
 coef_data <- data.frame(coef = coef(gam_mortality_unit))
 se <- sqrt(diag(vcov(gam_mortality_unit)))
@@ -146,12 +150,11 @@ z_value <- qnorm(0.976) # 95% confidence level - detection prevalence
 #Redondea decimales a 2
 
 coef_data <- round(coef_data, 2)
+
 # Calculate the odds ratios and their respective lower and upper confidence limits
 coef_data$OR <- exp(coef_data$coef)
-coef_data$OR_lower <- exp(coef_data$coef - qnorm(0.975) * se)  # Usar 0.975 para obtener IC del 95%
-coef_data$OR_upper <- exp(coef_data$coef + qnorm(0.975) * se)
-
-library(ggplot2)
+coef_data$OR_lower <- exp(coef_data$coef - qnorm(0.976) * se)  # Usar 0.975 para obtener IC del 95%
+coef_data$OR_upper <- exp(coef_data$coef + qnorm(0.976) * se)
 
 # Filtrar las variables de interés
 #coef_data2 <- coef_data %>%
@@ -178,19 +181,8 @@ forest_plot <- ggplot(coef_data, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y
     y = "Predictor Variable",
     title = "Odds Ratios and Confidence Intervals for mortality emergency sepsis ICU"
   ) +
-  scale_color_manual(values = c("Adverse" = "#c0392b", "Protective" = "#27ae60", "Inconclusive" = "gray70"))
+  scale_color_manual(values = c("Adverse" = "#c0392b", "Protective" = "#27ae60", "Inconclusive" = "gray70")) +
   theme_minimal() 
-#    theme(
-#    plot.background = element_rect(fill = "white"),
-#    panel.grid.major.y = element_blank(),
-#    panel.grid.minor.y = element_blank(),
-#    plot.title = element_text(hjust = 0.5),
-#    axis.ticks = element_blank(),
-#    axis.text.x = element_text(color = "#2c3e50"),
-#    axis.text.y = element_text(color = "#2c3e50", hjust = 0), # Ajuste la posición horizontal del texto en el eje y
-#    # axis.title.y = element_text(margin = margin(t = 0, r = 20, b= 0, l = 0)), # Ajuste los márgenes del título del ej))
-#    axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0))  # Ajuste los márgenes del título del eje x
-#  )
 
 print(forest_plot)
 
@@ -204,7 +196,7 @@ print(forest_plot)
 
 ```{r}
 # Variable er_los_hrs
-gam_plot_mortality_unit <- plot(gam_mortality_unit, pages = 1)
+gam_plot_mortality_unit <- plot(gam_mortality_unit, pages = 0)
 x <- gam_plot_mortality_unit[[1]]$x
 fit <- gam_plot_mortality_unit[[1]]$fit
 se <- gam_plot_mortality_unit[[1]]$se
@@ -212,9 +204,10 @@ se <- gam_plot_mortality_unit[[1]]$se
 fit_values <- as.vector(fit)
 se_values <- as.vector(se)
 
-fit_chance <- (exp(fit) / (1 + exp(fit))) 
-lower_bound_chance <- (exp(fit - 2 * se) / (1 + exp(fit - 2 * se)))
-upper_bound_chance <- (exp(fit + 2 * se) / (1 + exp(fit + 2 * se))) 
+# Convert odds ratio to percentage chance of ICU mortality 
+fit_chance <- (exp(fit) / (1 + exp(fit))) * 100
+lower_bound_chance <- (exp(fit - 2 * se) / (1 + exp(fit - 2 * se))) * 100
+upper_bound_chance <- (exp(fit + 2 * se) / (1 + exp(fit + 2 * se))) * 100
 
 df_er_los_hrs_mortality <- 
   data.frame(

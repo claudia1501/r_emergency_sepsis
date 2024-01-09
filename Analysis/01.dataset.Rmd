@@ -20,7 +20,6 @@ library(summarytools)
 library(tidyverse)
 library(forcats)
 library(tidyr)
-
 ```
 
 # BigQuery related functions
@@ -67,6 +66,7 @@ con <- dbConnect(
 )
 
 ```
+
 # Data Extraction
 
 Loading queries and extracting the data.
@@ -86,6 +86,7 @@ history_dx <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgenc
 ```
 
 # Joining 1º df
+
 ```{r}
 #Unimos df
 dfs_to_join <- list(patients_total,patients_admit,patients_apacheadmission,patients_emergency,apachescore,sensitivitylevel,charlson_score,history_dx) #apache_sepsis,apache_infection 
@@ -96,6 +97,7 @@ final_df <- Reduce(function(x,y) merge(x,y, by = "patientunitstayid", all.x = TR
 ## Imputations 
 
 ### Age
+
 ```{r}
 
 ##Eliminamos una fila que se ha colado con edad 4 años
@@ -125,6 +127,7 @@ final_df <- final_df %>%
 final_df <- final_df %>%
   drop_na(sex)
 ```
+
 ### Hospital admit source (emergency department)
 
 ```{r}
@@ -155,6 +158,7 @@ final_df <- final_df %>%
 ```
 
 ###Unittype
+
 ```{r}
 # Variable unittype, agrupar en las 5 categorías con mayor valor y el resto agrupadas en la variable other (esto se hace debido a la poca cantidad que hay de muchas de esas categorias de tipo de UCI)
 
@@ -169,10 +173,10 @@ top_categories <- unittype_counts %>%
 final_df <- final_df %>%
  mutate(unittype = fct_lump(unittype, n = 4, other_level = "Other"))
 # Vuelve a contar la frecuencia después de la agrupación
-new_unittype_counts <- final_df %>%
+top_unittype <- final_df %>%
   count(unittype, name = "Frequency")
 # Muestra el resultado
-print(new_unittype_counts)
+print(top_unittype)
 
 #Lista de las 5 categorías con más valores
 top_categories <- c( "Cardiac ICU",
@@ -212,10 +216,10 @@ top_categories <- apache_counts %>%
 final_df <- final_df %>%
  mutate(apacheadmissiondx = fct_lump(apacheadmissiondx, n = 5, other_level = "Other"))
 # Vuelve a contar la frecuencia después de la agrupación
-new_apache_counts <- final_df %>%
+top_apacheadmissiondx <- final_df %>%
   count(apacheadmissiondx, name = "Frequency")
 # Muestra el resultado
-print(new_apache_counts)
+print(top_apacheadmissiondx)
 
 #Lista de las 10 categorías con más valores
 top_categories <- c("Pneumonia, bacterial",
@@ -281,8 +285,6 @@ final_df <- final_df %>%
 final_df$ethnicity <- as.factor(final_df$ethnicity)
 ```
 
-
-
 ### Stratify: Unitdischargestatus (estado del que sale de la unidad)
 
 ```{r}
@@ -297,7 +299,6 @@ final_df <- final_df %>%
 final_df$unitdischargestatus <- as.factor(final_df$unitdischargestatus)
 ```
 
-
 ### Variables sepsis and infection (bin)
 
 ```{r}
@@ -308,7 +309,6 @@ final_df$unitdischargestatus <- as.factor(final_df$unitdischargestatus)
 #  mutate(infection_bin = recode(infection_bin, "no" = "0")) %>%
 #  mutate(infection_bin = recode(infection_bin, "sí" = "1"))
 ```
-
 
 ### Apachescore,change name and na = median
 
@@ -359,7 +359,7 @@ variables <- c("hist_metastasis_bin", "hist_vih_sida_bin", "hist_cirrosis_liver_
                "hist_pud_bin", "hist_liver_bin")
 
 # Utilizar dplyr para realizar el conteo y seleccionar las cinco variables con más 1
-top5_resultados <- final_df %>%
+top5_hist_dx <- final_df %>%
   select(all_of(variables)) %>%
   summarise(across(everything(), ~sum(. == 1), .names = "Conteo_{.col}")) %>%
   pivot_longer(everything(), names_to = "Variable", values_to = "Conteo") %>%
@@ -367,7 +367,7 @@ top5_resultados <- final_df %>%
   head(5)
 
 # Mostrar el resultado final
-print(top5_resultados)
+print(top5_hist_dx)
 
 
 # Agrupar resto de hist en una misma variable other
@@ -381,6 +381,7 @@ final_df <- final_df %>%
 
 ```
 
+# Df order 
 
 ```{r}
 #Orden de las variables
@@ -431,7 +432,7 @@ final_df_er_sepsis <- final_df_order %>%
   select(patientunitstayid, sex,age,ethnicity,er_los_hrs,apacheadmissiondx,unittype, apachescoreIV,bact_resist_level, final_charlson_score, hist_diabetes_bin,hist_copd_bin,hist_chf_bin,hist_cancer_bin,hist_renal_bin,hist_other_bin,unitdischargestatus) #sepsis_bin,infection_bin
 ```
 
-# Variable factor
+## Variable factor
 
 ```{r}
 ## Variable bact_resist_level
@@ -478,32 +479,32 @@ write.csv(final_df_er_sepsis, file = "C:/Users/cjimenez10J/Documents/projects/r_
 # Flowchart
 
 ```{r}
-dfs_to_join <- list(patients_total,patients_admit,patients_apacheadmission,patients_emergency, apachescore,sensitivitylevel,apache_sepsis,apache_infection,charlson_score,history_dx)
-final_df <- Reduce(function(x,y) merge(x,y, by = "patientunitstayid", all.x = TRUE), dfs_to_join)
+dfs_to_join_flow <- list(patients_total,patients_admit,patients_apacheadmission,patients_emergency,apachescore,sensitivitylevel,charlson_score,history_dx)
+flowchart_df <- Reduce(function(x,y) merge(x,y, by = "patientunitstayid", all.x = TRUE), dfs_to_join_flow)
 # we want to include septic patients that are not bleeding.
 
 print('Initial number of patients:')
-a <- nrow(final_df)
+a <- nrow(flowchart_df)
 a
 
 print('Patients >=16 ')
-final_df %<>% filter(age < 16)
-b <- nrow(final_df)
-a - b
+flowchart_df %<>% filter(age < 16)
+b <- nrow(flowchart_df)
+a - b 
 
 print('Patients with emergency department')
-final_df %<>% filter(!is.na(hospitaladmitsource))
-c <- nrow(final_df)
+flowchart_df %<>% filter(!is.na(hospitaladmitsource))
+c <- nrow(flowchart_df)
 b - c
 
 print('Patients admit')
-final_df %<>% filter(!is.na(unitstaytype))
-d <- nrow(final_df)
+flowchart_df %<>% filter(!is.na(unitstaytype))
+d <- nrow(flowchart_df)
 c - d
 
 print('Patients with sepsis/infection diagnossis')
-final_df %<>% filter(!is.na(apacheadmissiondx.x))
-e <- nrow(final_df)
+flowchart_df %<>% filter(!is.na(apacheadmissiondx))
+e <- nrow(flowchart_df)
 d-e
 #####################################################################################################
 # we are extracting top n apache groups
