@@ -144,7 +144,7 @@ final_df <- final_df %>%
   drop_na(unitstaytype)
 ```
 
-### Hospitaladmitoffset
+### Hospitaladmitoffset = er_los
 
 ```{r}
 # Cambio de nombre, paso de minutos a horas y valores absolutos
@@ -154,7 +154,7 @@ final_df <- final_df %>%
 
 # Quitar valores muy altos considerados outcome
 final_df <- final_df %>%
-  filter(er_los_hrs <= 24)
+  filter(er_los_hrs <= 12)
 ```
 
 ###Unittype

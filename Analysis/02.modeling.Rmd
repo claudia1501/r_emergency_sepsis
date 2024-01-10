@@ -140,21 +140,21 @@ The model's coefficients, odds ratios, and corresponding confidence intervals we
 ```{r}
 gam_mortality_unit <- 
   gam(
-    unitdischargestatus ~ s(er_los_hrs, k = 3) + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_renal_bin + hist_diabetes_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + unittype + apacheadmissiondx, data = final_df_er_sepsis,
-    family = binomial)  #bact_resist_level +
+    unitdischargestatus ~ s(er_los_hrs, k = 3) + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + unittype + apacheadmissiondx, data = final_df_er_sepsis,
+    family = binomial)  #bact_resist_level +   
 
 
 coef_data <- data.frame(coef = coef(gam_mortality_unit))
 se <- sqrt(diag(vcov(gam_mortality_unit)))
-z_value <- qnorm(0.976) # 95% confidence level - detection prevalence
+z_value <- qnorm(0.95) # 95% confidence level - detection prevalence
 #Redondea decimales a 2
 
 coef_data <- round(coef_data, 2)
 
 # Calculate the odds ratios and their respective lower and upper confidence limits
 coef_data$OR <- exp(coef_data$coef)
-coef_data$OR_lower <- exp(coef_data$coef - qnorm(0.976) * se)  # Usar 0.975 para obtener IC del 95%
-coef_data$OR_upper <- exp(coef_data$coef + qnorm(0.976) * se)
+coef_data$OR_lower <- exp(coef_data$coef - z_value * se)  # Usar 0.975 para obtener IC del 95%
+coef_data$OR_upper <- exp(coef_data$coef + z_value * se)
 
 # Filtrar las variables de interés
 #coef_data2 <- coef_data %>%
@@ -173,7 +173,7 @@ coef_data$adverse_protective <- as.factor(coef_data$adverse_protective)
 
 # Crear el forest plot
 forest_plot <- ggplot(coef_data, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = rownames(coef_data))) +
-  geom_point(aes(color = adverse_protective), size = 2) +
+  geom_point(aes(color = adverse_protective), size = 3) +
   geom_errorbarh(aes(color = adverse_protective), height = 0.1, linewidth = 0.5) +
   geom_vline(xintercept = 1, linetype = "solid", color = "gray50") +
   labs(
@@ -187,7 +187,6 @@ forest_plot <- ggplot(coef_data, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y
 print(forest_plot)
 
 ```
-
 
 
 
