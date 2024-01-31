@@ -154,7 +154,7 @@ final_df <- final_df %>%
 
 # Quitar valores muy altos considerados outcome
 final_df <- final_df %>%
-  filter(er_los_hrs <= 12)
+  filter(er_los_hrs <= 6)
 ```
 
 ###Unittype
@@ -291,12 +291,11 @@ final_df$ethnicity <- as.factor(final_df$ethnicity)
 final_df <- final_df %>%
   mutate(
     unitdischargestatus = ifelse(
-      unitdischargestatus == 'Expired', '1',
-      ifelse(trimws(unitdischargestatus) == '' | unitdischargestatus == 'Alive', '0', NA_character_)
+      unitdischargestatus == 'Expired', 1,
+      ifelse(trimws(unitdischargestatus) == '' | unitdischargestatus == 'Alive', 0, NA)
     )
   )
 
-final_df$unitdischargestatus <- as.factor(final_df$unitdischargestatus)
 ```
 
 ### Variables sepsis and infection (bin)
@@ -326,7 +325,7 @@ final_df <- final_df %>%
   )
 ```
 
-### History.dx. NA = 0
+### History.dx. 
 
 ```{r}
 final_df<- final_df %>%
@@ -368,7 +367,6 @@ top5_hist_dx <- final_df %>%
 
 # Mostrar el resultado final
 print(top5_hist_dx)
-
 
 # Agrupar resto de hist en una misma variable other
 ## Columna de cada pacientes donde se indica el total de cormobilidades que tiene cada uno de ellos
@@ -449,9 +447,6 @@ final_df_er_sepsis$ethnicity <- as.factor(final_df_er_sepsis$ethnicity)
 
 ##Variable sex
 final_df_er_sepsis$sex <- as.factor(final_df_er_sepsis$sex)
-
-##Variable unitdischargestatus
-final_df_er_sepsis$unitdischargestatus <- as.factor(final_df_er_sepsis$unitdischargestatus)
 
 ##Variable dummies_apacheadmissiondx
 ##final_df_er_sepsis <- final_df_er_sepsis %>%
