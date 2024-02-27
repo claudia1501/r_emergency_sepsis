@@ -92,6 +92,10 @@ history_dx <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgenc
 dfs_to_join <- list(patients_total,patients_admit,patients_apacheadmission,patients_emergency,apachescore,sensitivitylevel,charlson_score,history_dx) #apache_sepsis,apache_infection 
 final_df <- Reduce(function(x,y) merge(x,y, by = "patientunitstayid", all.x = TRUE), dfs_to_join)
 
+##Criterio exlcusion
+a <- nrow(final_df)
+print('Initial number of patients: ')
+print(a)
 ```
 
 ## Imputations 
@@ -105,11 +109,19 @@ final_df$age <- as.numeric(gsub("> 89", "90", final_df$age))
 final_df <- final_df[final_df$age >= 16,]
 final_df <- final_df %>%
   drop_na(age)
+
+
+##Criterio exclusión
+print('Patients >=16 ')
+b <- nrow(final_df)
+print(b)
+
 ```
 
 ### Sex
 
 ```{r}
+
 #Variable género = sex, a numérica: hombre = 0, mujer = 1
 final_df <- final_df %>%
  rename(sex = gender) %>%
@@ -126,6 +138,13 @@ final_df <- final_df %>%
 
 final_df <- final_df %>%
   drop_na(sex)
+
+
+##Criterio exclusión
+print('Patients with sex known')
+c <- nrow(final_df)
+print(c)
+
 ```
 
 ### Hospital admit source (emergency department)
@@ -134,6 +153,12 @@ final_df <- final_df %>%
 #Emilinamos NA
 final_df <- final_df %>%
   drop_na(hospitaladmitsource)
+
+##Cristerios exclusion
+print('patient with department known')
+d <- nrow(final_df)
+print(d)
+
 ```
 
 ### Unitstaytype
@@ -142,6 +167,12 @@ final_df <- final_df %>%
 # Eliminamos NA
 final_df <- final_df %>%
   drop_na(unitstaytype)
+
+##Cristerios exclusion
+print('patient with unit stay type known')
+e <- nrow(final_df)
+print(e)
+
 ```
 
 ### Hospitaladmitoffset = er_los
@@ -155,6 +186,12 @@ final_df <- final_df %>%
 # Quitar valores muy altos considerados outcome
 final_df <- final_df %>%
   filter(er_los_hrs <= 6)
+
+##Cristerios exclusion
+print('Patients in emergency department during 6 hrs')
+f <- nrow(final_df)
+print(f)
+
 ```
 
 ###Unittype
@@ -202,6 +239,12 @@ final_df <- final_df %>%
 #Eliminamos filas sin valores, NA
 final_df <- final_df %>% 
   drop_na(apacheadmissiondx)
+
+##Cristerios exclusion
+print('Patients with apache admission dx unknown')
+g <- nrow(final_df)
+print(g)
+
 
 # Variable apache admission, agrupar en las 5 categorías con mayor valor y el resto agrupadas en la variable other (esto se hace debido a la poca cantidad que hay de muchas de esas categorias de diagnósticos)
 
@@ -282,7 +325,7 @@ final_df <- final_df %>%
   mutate(ethnicity = ifelse(ethnicity %in% c("", "other", "Other/Unknown", "African American", "Asian", "Hispanic", "Native American"), "other/unknown", ethnicity))
 
 
-final_df$ethnicity <- as.factor(final_df$ethnicity)
+#final_df$ethnicity <- as.factor(final_df$ethnicity)
 ```
 
 ### Stratify: Unitdischargestatus (estado del que sale de la unidad)
@@ -323,6 +366,12 @@ final_df <- final_df %>%
   mutate(
     bact_resist_level = replace_na(final_df$bact_resist_level, 'Not infection')
   )
+
+##Cristerios exclusion
+print('Patients with sensitivity level unknown')
+h <- nrow(final_df)
+print(h)
+
 ```
 
 ### History.dx. 
@@ -393,48 +442,53 @@ final_df_order <- final_df %>%
 
 ```{r}
 #Transformar a dummy
-#unittype_ <- factor(final_df_order$unittype)
-#dummies_unittype <- dummy_cols(final_df_order$unittype, remove_first_dummy =  FALSE)
+unittype_ <- factor(final_df_order$unittype)
+dummies_unittype <- dummy_cols(final_df_order$unittype, remove_first_dummy =  FALSE)
 
 # Incluir en df 
-#final_df_order <- data.frame(final_df_order,dummies_unittype[,2:5])
+final_df_order <- data.frame(final_df_order,dummies_unittype[,2:5])
 
 #Cambiamos nombrs de las variables
-#final_df_order <- rename(final_df_order, unit_ccu_cticu = .data_CCU.CTICU) %>%
-#  rename(unit_med_surg_icu = .data_Med.Surg.ICU) %>%
-#  rename(unit_micu = .data_MICU) %>%
-#  rename(unit_other = .data_Other)
+final_df_order <- rename(final_df_order, unit_ccu_cticu = .data_CCU.CTICU) %>%
+  rename(unit_med_surg_icu = .data_Med.Surg.ICU) %>%
+  rename(unit_micu = .data_MICU) %>%
+  rename(unit_other = .data_Other)
 ```
 
 ### Apache admission dx
 ```{r}
 #Transformar a dummy
-#dummies_apacheadmissiondx <- dummy_cols(final_df_order$apacheadmissiondx, remove_first_dummy = FALSE)
+dummies_apacheadmissiondx <- dummy_cols(final_df_order$apacheadmissiondx, remove_first_dummy = FALSE)
 
 ## Incluir dummies en el df final
-#final_df_order <- data.frame(final_df_order,dummies_apacheadmissiondx[,2:7])
+final_df_order <- data.frame(final_df_order,dummies_apacheadmissiondx[,2:7])
 
 ## Cambiamos nombres de la variables dummies de apache para mejor entendimiento
-#final_df_order <- rename(final_df_order,apacheadmissiondx_other = .data_Other) %>%
-#  rename(apacheadmissiondx_pneumonia_bacterial = .data_Pneumonia..bacterial) %>%
-#  rename(apacheadmissiondx_sepsis_gi = .data_Sepsis..GI) %>%
-#  rename(apacheadmissiondx_sepsis_pulmonary = .data_Sepsis..pulmonary) %>%
-#  rename(apacheadmissiondx_sepsis_renal_uti = .data_Sepsis..renal.UTI..including.bladder.) %>%
-#  rename(apacheadmissiondx_sepsis_unknown = .data_Sepsis..unknown)
+final_df_order <- rename(final_df_order,apacheadmissiondx_other = .data_Other) %>%
+  rename(apacheadmissiondx_pneumonia_bacterial = .data_Pneumonia..bacterial) %>%
+  rename(apacheadmissiondx_sepsis_gi = .data_Sepsis..GI) %>%
+  rename(apacheadmissiondx_sepsis_pulmonary = .data_Sepsis..pulmonary) %>%
+  rename(apacheadmissiondx_sepsis_renal_uti = .data_Sepsis..renal.UTI..including.bladder.) %>%
+  rename(apacheadmissiondx_sepsis_unknown = .data_Sepsis..unknown)
 ```
 
 # Save final df
 
 ```{r}
 final_df_er_sepsis <- final_df_order %>%
-  select(patientunitstayid, sex,age,ethnicity,er_los_hrs,apacheadmissiondx,unittype, apachescoreIV,bact_resist_level, final_charlson_score, hist_diabetes_bin,hist_copd_bin,hist_chf_bin,hist_cancer_bin,hist_renal_bin,hist_other_bin,unitdischargestatus) #sepsis_bin,infection_bin
+  select(unitdischargestatus,er_los_hrs, sex, age, ethnicity, apachescoreIV,  final_charlson_score, hist_diabetes_bin, hist_renal_bin, hist_cancer_bin, hist_chf_bin, hist_copd_bin,hist_other_bin,unittype,apacheadmissiondx)
+
+
+
+final_df_er_sepsis_dummy <- final_df_order %>%
+  select(patientunitstayid, sex,age,ethnicity,er_los_hrs,apacheadmissiondx_other,apacheadmissiondx_pneumonia_bacterial,apacheadmissiondx_sepsis_gi,apacheadmissiondx_sepsis_pulmonary,apacheadmissiondx_sepsis_renal_uti,apacheadmissiondx_sepsis_unknown,unit_ccu_cticu,unit_med_surg_icu,unit_micu,unit_other, apachescoreIV, final_charlson_score, hist_diabetes_bin,hist_copd_bin,hist_chf_bin,hist_cancer_bin,hist_renal_bin,hist_other_bin,unitdischargestatus) #sepsis_bin,infection_bin
 ```
 
 ## Variable factor
 
 ```{r}
 ## Variable bact_resist_level
-final_df_er_sepsis$bact_resist_level <- as.factor(final_df_er_sepsis$bact_resist_level)
+#final_df_er_sepsis$bact_resist_level <- as.factor(final_df_er_sepsis$bact_resist_level)
 
 ## Variable ethnicity
 final_df_er_sepsis$ethnicity <- as.factor(final_df_er_sepsis$ethnicity)
@@ -449,22 +503,26 @@ final_df_er_sepsis$ethnicity <- as.factor(final_df_er_sepsis$ethnicity)
 final_df_er_sepsis$sex <- as.factor(final_df_er_sepsis$sex)
 
 ##Variable dummies_apacheadmissiondx
-##final_df_er_sepsis <- final_df_er_sepsis %>%
-##  mutate_at(vars(apacheadmissiondx_other, apacheadmissiondx_pneumonia_bacterial, apacheadmissiondx_sepsis_pulmonary, ##apacheadmissiondx_sepsis_renal_uti, apacheadmissiondx_sepsis_unknown),as.factor)
+final_df_er_sepsis <- final_df_er_sepsis %>%
+  mutate_at(vars(apacheadmissiondx_other, apacheadmissiondx_pneumonia_bacterial, apacheadmissiondx_sepsis_gi, apacheadmissiondx_sepsis_pulmonary, apacheadmissiondx_sepsis_renal_uti, apacheadmissiondx_sepsis_unknown),as.factor)
 
 ## Variable apacheadmissiondx
-final_df_er_sepsis$apacheadmissiondx <- as.factor(final_df_er_sepsis$apacheadmissiondx)
+#final_df_er_sepsis$apacheadmissiondx <- as.factor(final_df_er_sepsis$apacheadmissiondx)
 
 ##Variable dummies_unittype
-##final_df_er_sepsis <- final_df_er_sepsis %>%
-##  mutate_at(vars(unit_ccu_cticu,unit_med_surg_icu,unit_micu, unit_other), as.factor)
+final_df_er_sepsis <- final_df_er_sepsis %>%
+  mutate_at(vars(unit_ccu_cticu,unit_med_surg_icu,unit_micu, unit_other), as.factor)
 
 ## Variable unittype
-final_df_er_sepsis$unittype <- as.factor(final_df_er_sepsis$unittype)
+#final_df_er_sepsis$unittype <- as.factor(final_df_er_sepsis$unittype)
 
 ## Variables history
 final_df_er_sepsis <- final_df_er_sepsis %>%
   mutate_at(vars(hist_diabetes_bin,hist_copd_bin,hist_chf_bin,hist_cancer_bin,hist_renal_bin,hist_other_bin), as.factor)
+
+##Variable unitdischargestatus
+final_df_er_sepsis$unitdischargestatus <- as.factor(final_df_er_sepsis$unitdischargestatus)
+
 ```
 
 ```{r}
@@ -474,108 +532,38 @@ write.csv(final_df_er_sepsis, file = "C:/Users/cjimenez10J/Documents/projects/r_
 # Flowchart
 
 ```{r}
-dfs_to_join_flow <- list(patients_total,patients_admit,patients_apacheadmission,patients_emergency,apachescore,sensitivitylevel,charlson_score,history_dx)
-flowchart_df <- Reduce(function(x,y) merge(x,y, by = "patientunitstayid", all.x = TRUE), dfs_to_join_flow)
-# we want to include septic patients that are not bleeding.
+titulo <- "Inclusion and Exclusion Criteria Flowchart"
+# Crear el código DOT para el diagrama de flujo
+flowchart_code <- sprintf("
+digraph flowchart {
+labelloc=\"t\";  // Colocar el título arriba del diagrama
+  label=\"%s\";   //  Título del diagrama
+  // Estilo del título
+  graph [fontname = 'Arial', fontsize = 20, fontcolor = 'black', color = 'transparent'];
+  node [shape = box, fontname = 'Arial', fontsize = 12, color = 'black'];
+  a [label = 'Initial number of patients: %d'];
+  b [label = 'Patients >=16: %d'];
+  c [label = 'patient with department unknown: %d'];
+  d [label = 'patient with unit stay type unknown: %d'];
+  e [label = 'Patients in emergency department during 6 hrs: %d'];
+  f [label = 'Patients with apache admission dx unknown: %d'];
+  g [label = 'Patients with sensitivity level unknown: %d'];
+  h [label = 'Total patients: %d'];
 
-print('Initial number of patients:')
-a <- nrow(flowchart_df)
-a
-
-print('Patients >=16 ')
-flowchart_df %<>% filter(age < 16)
-b <- nrow(flowchart_df)
-a - b 
-
-print('Patients with emergency department')
-flowchart_df %<>% filter(!is.na(hospitaladmitsource))
-c <- nrow(flowchart_df)
-b - c
-
-print('Patients admit')
-flowchart_df %<>% filter(!is.na(unitstaytype))
-d <- nrow(flowchart_df)
-c - d
-
-print('Patients with sepsis/infection diagnossis')
-flowchart_df %<>% filter(!is.na(apacheadmissiondx))
-e <- nrow(flowchart_df)
-d-e
-#####################################################################################################
-# we are extracting top n apache groups
-topn <- 5
-top_apachedxgroup <- tail(names(sort(table(lactate_df$apachedxgroup_mod))), topn) 
-
-lactate_df <- lactate_df %>% mutate(apache_strat = if_else(apachedxgroup_mod %in% top_apachedxgroup, apachedxgroup_mod,'Not Top5'))
-#####################################################################################################
-
-print('Patients not in Top5 Apache groups that are excluded:')
-lactate_df %<>% filter(apache_strat != "Not Top5")
-f <- nrow(lactate_df)
-e-f
-
-print('Patients without one lab drawn each day for the first 3 days of admission:')
-lactate_df %<>% filter(atleast_one_lab_drawn_each_day_first_3days == 1 )
-g <- nrow(lactate_df)
-f-g
-
-print('Final number of patients:')
-nrow(lactate_df)
-
-
-
-library(Gmisc, quietly = TRUE)
-library(glue)
-library(grid)
-library(magrittr)
-
-# Initial number of patients
-initial_patients <- boxGrob(width = .175,
-                            glue("Initial number of patients",
-                                 "N = {a}",
-                                 a = txtInt(a),
-                                 .sep = "\n"))
-# Excluded box
-excluded <- boxGrob(glue("Total Excluded (N = {tot}):",
-                         " - Patients <18 years old: {below_18}",
-                         " - Patients without Hgb data: {no_hgb}",
-                         " - Patients with stays shorter than 3 hours: {short_stays}",
-                         " - Patients without a diagnose available: {no_diagnose}",
-                         " - Patients not within the top5 Apache groups: {not_top5}",
-                         " - Patients without one lab drawn each day for the first 3 days of admission: {no_lab_drawn}",
-                         tot = txtInt(a - nrow(lactate_df)),
-                         below_18 = txtInt(a - b),
-                         no_hgb = txtInt(b-c),
-                         short_stays = txtInt(c-d),
-                         no_diagnose = txtInt(d-e),
-                         not_top5 = txtInt(e - f),
-                         no_lab_drawn = txtInt(f - g),
-                         .sep = "\n"),
-                    just = "left")
-
-
-# Final number of patients
-final_patients <- boxGrob(width = .175,
-                            glue("Final number of patients",
-                               "N = {n}",
-                               n = txtInt(nrow(lactate_df)),
-                               .sep = "\n"))
-
-
-# Create connections
-grid.newpage()
-vert <- spreadVertical(initial_patients,
-                       excluded,  # Include the excluded box here
-                       final_patients)
-
-for (i in 1:(length(vert) - 1)) {
-  connectGrob(vert[[i]], vert[[i + 1]], type = "vert") %>%
-    print
+  a -> b;
+  b -> c;
+  c -> d;
+  d -> e;
+  e -> f;
+  f -> g;
+  g -> h;
 }
+", titulo, a,b,c,d,e,f,g,h)
 
-# Print boxes
-vert
+# Crear y visualizar el diagrama
+grViz(flowchart_code)
 ```
+
 
 
 
