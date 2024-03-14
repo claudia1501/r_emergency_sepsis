@@ -20,6 +20,7 @@ library(summarytools)
 library(tidyverse)
 library(forcats)
 library(tidyr)
+library(DiagrammeR)
 ```
 
 # BigQuery related functions
@@ -72,7 +73,7 @@ con <- dbConnect(
 Loading queries and extracting the data.
 ```{r}
 patients_dates <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/patients_date.sql"))
-patients_apacheadmission <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/patient_apacheadmission.sql"))
+apacheadmission <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/apacheadmissiondx.sql"))
 patients_emergency <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/patient_emergency.sql"))
 patients_admit <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/patients_admit.sql"))
 patients_total <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/patient_total.sql"))
@@ -89,8 +90,17 @@ history_dx <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgenc
 
 ```{r}
 #Unimos df
-dfs_to_join <- list(patients_total,patients_admit,patients_apacheadmission,patients_emergency,apachescore,sensitivitylevel,charlson_score,history_dx) #apache_sepsis,apache_infection 
+dfs_to_join <- list(patients_total,
+                    patients_admit,
+                    apacheadmission,
+                    patients_emergency,
+                    apachescore,
+                    sensitivitylevel,
+                    charlson_score,
+                    history_dx) #apache_sepsis,apache_infection
+
 final_df <- Reduce(function(x,y) merge(x,y, by = "patientunitstayid", all.x = TRUE), dfs_to_join)
+
 
 ##Criterio exlcusion
 a <- nrow(final_df)
@@ -98,33 +108,82 @@ print('Initial number of patients: ')
 print(a)
 ```
 
-## Imputations 
-
-### Age
+# Exclusion criteria
 
 ```{r}
-
-##Eliminamos una fila que se ha colado con edad 4 años
+# Age
 final_df$age <- as.numeric(gsub("> 89", "90", final_df$age))
 final_df <- final_df[final_df$age >= 16,]
-final_df <- final_df %>%
-  drop_na(age)
-
 
 ##Criterio exclusión
 print('Patients >=16 ')
 b <- nrow(final_df)
 print(b)
 
+# Hospitaladmitoffset = er_los
+# Cambio de nombre, paso de minutos a horas y valores absolutos
+final_df <- final_df %>%
+  mutate(er_los_hrs = abs(hospitaladmitoffset/60)) %>%
+  select(-hospitaladmitoffset)
+
+# Quitar valores muy altos considerados outcome
+final_df <- final_df %>%
+  filter(er_los_hrs <= 24)
+
+print('Patients in emergency department during 24 hrs')
+c <- nrow(final_df)
+print(c)
+
+# Sex
+final_df <- final_df %>%
+  rename(sex = gender) %>%
+  drop_na(sex)
+
+##Criterio exclusión
+print('Patients with sex known: ')
+d <- nrow(final_df)
+print(d)
+
+# Hospital admit source (emergency department)
+#Emilinamos NA
+final_df <- final_df %>%
+  drop_na(hospitaladmitsource)
+
+##Cristerios exclusion
+print('patient with emergency department')
+e <- nrow(final_df)
+print(e)
+
+# Unitstaytype
+# Eliminamos NA
+final_df <- final_df %>%
+  drop_na(unitstaytype)
+
+##Cristerios exclusion
+print('patient with unit stay type admit')
+f <- nrow(final_df)
+print(f)
+
+# Apache admission dx
+#Eliminamos filas sin valores, NA
+final_df <- final_df %>% 
+  drop_na(apacheadmissiondx)
+
+## Cristerios exclusion
+print('Patients with apache admission dx known')
+g <- nrow(final_df)
+print(g)
+
+write.csv(final_df, file = "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/final_df_sinimputar.csv", row.names = FALSE)
 ```
+
+# Imputations 
 
 ### Sex
 
 ```{r}
-
 #Variable género = sex, a numérica: hombre = 0, mujer = 1
 final_df <- final_df %>%
- rename(sex = gender) %>%
   mutate(sex = ifelse(
     sex == "Male", "M",
     ifelse(
@@ -135,63 +194,6 @@ final_df <- final_df %>%
   mutate(sex = as.factor(sex)) %>%
   #mutate(sex = forcats::fct_na_value_to_level(sex)) %>%
   filter(sex != "Unknown")
-
-final_df <- final_df %>%
-  drop_na(sex)
-
-
-##Criterio exclusión
-print('Patients with sex known')
-c <- nrow(final_df)
-print(c)
-
-```
-
-### Hospital admit source (emergency department)
-
-```{r}
-#Emilinamos NA
-final_df <- final_df %>%
-  drop_na(hospitaladmitsource)
-
-##Cristerios exclusion
-print('patient with department known')
-d <- nrow(final_df)
-print(d)
-
-```
-
-### Unitstaytype
-
-```{r}
-# Eliminamos NA
-final_df <- final_df %>%
-  drop_na(unitstaytype)
-
-##Cristerios exclusion
-print('patient with unit stay type known')
-e <- nrow(final_df)
-print(e)
-
-```
-
-### Hospitaladmitoffset = er_los
-
-```{r}
-# Cambio de nombre, paso de minutos a horas y valores absolutos
-final_df <- final_df %>%
-  mutate(er_los_hrs = abs(hospitaladmitoffset/60)) %>%
-  select(-hospitaladmitoffset)
-
-# Quitar valores muy altos considerados outcome
-final_df <- final_df %>%
-  filter(er_los_hrs <= 6)
-
-##Cristerios exclusion
-print('Patients in emergency department during 6 hrs')
-f <- nrow(final_df)
-print(f)
-
 ```
 
 ###Unittype
@@ -236,15 +238,9 @@ final_df <- final_df %>%
 ### Apache admission dx
 
 ```{r}
-#Eliminamos filas sin valores, NA
-final_df <- final_df %>% 
-  drop_na(apacheadmissiondx)
-
-##Cristerios exclusion
-print('Patients with apache admission dx unknown')
-g <- nrow(final_df)
-print(g)
-
+# Unimos bajo un mismo nombre: pneumonia, bacterial y sepsis pulmonary = sepsis, pneumonia
+final_df <- final_df %>%
+  mutate(apacheadmissiondx = ifelse(apacheadmissiondx %in% c("Pneumonia, bacterial", "Sepsis, pulmonary"), "sepsis, pneumonia", apacheadmissiondx))
 
 # Variable apache admission, agrupar en las 5 categorías con mayor valor y el resto agrupadas en la variable other (esto se hace debido a la poca cantidad que hay de muchas de esas categorias de diagnósticos)
 
@@ -265,9 +261,9 @@ top_apacheadmissiondx <- final_df %>%
 print(top_apacheadmissiondx)
 
 #Lista de las 10 categorías con más valores
-top_categories <- c("Pneumonia, bacterial",
+top_categories <- c("sepsis, pneumonia",
   "Sepsis, GI",
-  "Sepsis, pulmonary",
+  "Sepsis, cutaneous/soft tissue",
   "Sepsis, renal/UTI (including bladder)",
   "Sepsis, unknown",
   "Other")
@@ -323,9 +319,6 @@ final_df <- final_df %>%
 # Change empty string = other
 final_df <- final_df %>%
   mutate(ethnicity = ifelse(ethnicity %in% c("", "other", "Other/Unknown", "African American", "Asian", "Hispanic", "Native American"), "other/unknown", ethnicity))
-
-
-#final_df$ethnicity <- as.factor(final_df$ethnicity)
 ```
 
 ### Stratify: Unitdischargestatus (estado del que sale de la unidad)
@@ -339,17 +332,6 @@ final_df <- final_df %>%
     )
   )
 
-```
-
-### Variables sepsis and infection (bin)
-
-```{r}
-#Variable sepsis_bin and infection_bin. Change: no = 0; sí = 1
-#final_df <- final_df %>%
-#  mutate(sepsis_bin = recode(sepsis_bin, "no" = "0")) %>%
-#  mutate(sepsis_bin = recode(sepsis_bin, "sí" = "1")) %>%
-#  mutate(infection_bin = recode(infection_bin, "no" = "0")) %>%
-#  mutate(infection_bin = recode(infection_bin, "sí" = "1"))
 ```
 
 ### Apachescore,change name and na = median
@@ -366,12 +348,6 @@ final_df <- final_df %>%
   mutate(
     bact_resist_level = replace_na(final_df$bact_resist_level, 'Not infection')
   )
-
-##Cristerios exclusion
-print('Patients with sensitivity level unknown')
-h <- nrow(final_df)
-print(h)
-
 ```
 
 ### History.dx. 
@@ -472,13 +448,13 @@ final_df_order <- rename(final_df_order,apacheadmissiondx_other = .data_Other) %
   rename(apacheadmissiondx_sepsis_unknown = .data_Sepsis..unknown)
 ```
 
-# Save final df
+# Final df
 
 ```{r}
 final_df_er_sepsis <- final_df_order %>%
-  select(unitdischargestatus,er_los_hrs, sex, age, ethnicity, apachescoreIV,  final_charlson_score, hist_diabetes_bin, hist_renal_bin, hist_cancer_bin, hist_chf_bin, hist_copd_bin,hist_other_bin,unittype,apacheadmissiondx)
+  select(unitdischargestatus,er_los_hrs, sex, age, ethnicity, apachescoreIV,  final_charlson_score, hist_diabetes_bin, hist_renal_bin, hist_cancer_bin, hist_chf_bin, hist_copd_bin,hist_other_bin,unittype,apacheadmissiondx,bact_resist_level)
 
-
+final_df_er_sepsis <- distinct(final_df_er_sepsis)
 
 final_df_er_sepsis_dummy <- final_df_order %>%
   select(patientunitstayid, sex,age,ethnicity,er_los_hrs,apacheadmissiondx_other,apacheadmissiondx_pneumonia_bacterial,apacheadmissiondx_sepsis_gi,apacheadmissiondx_sepsis_pulmonary,apacheadmissiondx_sepsis_renal_uti,apacheadmissiondx_sepsis_unknown,unit_ccu_cticu,unit_med_surg_icu,unit_micu,unit_other, apachescoreIV, final_charlson_score, hist_diabetes_bin,hist_copd_bin,hist_chf_bin,hist_cancer_bin,hist_renal_bin,hist_other_bin,unitdischargestatus) #sepsis_bin,infection_bin
@@ -529,6 +505,20 @@ final_df_er_sepsis$unitdischargestatus <- as.factor(final_df_er_sepsis$unitdisch
 write.csv(final_df_er_sepsis, file = "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/selected_data.csv", row.names = FALSE)
 ```
 
+# PCA VARIABLES
+```{r}
+final_df_numeric <- final_df_er_sepsis %>%
+  select(unitdischargestatus,er_los_hrs, age, apachescoreIV,  final_charlson_score, hist_diabetes_bin, hist_renal_bin, hist_cancer_bin, hist_chf_bin, hist_copd_bin,hist_other_bin)
+
+resultados_pca <- lapply(final_df_numeric, function(x) prcomp(~ x, scale. = TRUE))
+for (i in 1:length(resultados_pca)) {
+  print(paste("PCA para", names(final_df_numeric)[i]))
+  print(summary(resultados_pca[[i]]))
+}
+```
+
+
+
 # Flowchart
 
 ```{r}
@@ -542,13 +532,13 @@ labelloc=\"t\";  // Colocar el título arriba del diagrama
   graph [fontname = 'Arial', fontsize = 20, fontcolor = 'black', color = 'transparent'];
   node [shape = box, fontname = 'Arial', fontsize = 12, color = 'black'];
   a [label = 'Initial number of patients: %d'];
-  b [label = 'Patients >=16: %d'];
-  c [label = 'patient with department unknown: %d'];
-  d [label = 'patient with unit stay type unknown: %d'];
-  e [label = 'Patients in emergency department during 6 hrs: %d'];
-  f [label = 'Patients with apache admission dx unknown: %d'];
-  g [label = 'Patients with sensitivity level unknown: %d'];
-  h [label = 'Total patients: %d'];
+  b [label = 'Patients >=16 %d'];
+  c [label = 'Patients in emergency department during 24 hrs: %d'];
+  d [label = 'Patients with sex known: %d'];
+  e [label = 'patient with emergency department: %d'];
+  f [label = 'patient with unit stay type admit: %d'];
+  g [label = 'Patients with apache admission dx known: %d'];
+  h [label = 'Total Patients: %d']
 
   a -> b;
   b -> c;

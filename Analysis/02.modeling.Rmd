@@ -31,6 +31,7 @@ library(htmlTable)
 library(parglm)
 library(stargazer)
 library(patchwork)
+library(randomForest)
 ```
 
 # Load Data
@@ -48,7 +49,7 @@ print('Logistic Regression of hospital mortality')
 
 ## Ajuste del modelo de regresión logística
 logreg_icudeath <- glm(
-   unitdischargestatus ~ er_los_hrs + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + unittype + apacheadmissiondx, data = final_df_er_sepsis,
+   unitdischargestatus ~ er_los_hrs + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + unittype + apacheadmissiondx + bact_resist_level, data = final_df_er_sepsis,
     family = binomial(link = "logit"))
 ```
 
@@ -60,7 +61,7 @@ or_icudeath_1 <- extract_coef_pval_OR(logreg_icudeath)
 
 ## Ordenación de variables y asignación de nombres adecuados
 variables_order <- rev(c(
-  "Intercept", "Tiempo de ingreso en UCI (horas)", "Sex (Male)", "Age (years)", "Ethnicity", "ApachescoreIV", "Final Charlson Score", "Diabetes History", "Renal History", "Cancer History", "CHF History", "COPD History", "Other History", "Unit Type", "Apacheadmissiondx"
+  "Intercept", "Tiempo de ingreso en UCI (horas)", "Sex (Male)", "Age (years)", "Ethnicity", "ApachescoreIV", "Final Charlson Score", "Diabetes History", "Renal History", "Cancer History", "CHF History", "COPD History", "Other History", "Unit Type", "Apacheadmissiondx","Bact resist level"
 ))
 
 or_icudeath_2 <- or_icudeath_1 %>%
@@ -81,6 +82,7 @@ or_icudeath_2 <- or_icudeath_1 %>%
       term == "hist_other_bin" ~ "Other History",
       term == "unittype" ~ "Unit Type",
       term == "apacheadmissiondx" ~ "Apacheadmissiondx",
+      term == "bact_resist_level" ~ "Bact resist level",
       TRUE ~ as.character(term)
     ),
     adverse_protective_glm = case_when(
@@ -152,7 +154,7 @@ plot_logreg_icudeath <- final_df_er_sepsis %>%
   theme_bw() +
   theme(plot.title = element_text(face = "bold", hjust = 0.5))
 
-print(p2)
+print(plot_logreg_icudeath)
 ```
 
 ## Plot glm bivariable
@@ -327,7 +329,7 @@ ggplot(df_er_los_hrs_mortality, mapping = aes(x = x, y = fit_chance)) +
 
 ```
 
-# Pruebas de rendimiento del modelo GAM
+## Pruebas de rendimiento del modelo GAM
 
 ```{r}
 predicciones <- predict(gam_mortality_unit, type = "response")
@@ -347,6 +349,44 @@ print(f1_score)
 print(especificidad)
 print(exactitud)
 print(matriz_confusion)
+```
+
+# Modelo de bosque aleatorio
+
+```{r}
+final_df_er_sepsis$unitdischargestatus <- as.factor(final_df_er_sepsis$unitdischargestatus)
+
+mdoelforest <- randomForest(
+  unitdischargestatus ~ er_los_hrs + sex + age + ethnicity + apachescoreIV +  
+  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + 
+  hist_chf_bin + hist_copd_bin + hist_other_bin + unittype + 
+  apacheadmissiondx + bact_resist_level, 
+  data = final_df_er_sepsis, 
+  ntree = 500
+)
+
+
+probas <- predict(mdoelforest, type = "response")$probabilities[, 2]
+
+
+n <- length(probas)
+z <- qnorm(0,975)
+margin_of_error <- z * sqrt(probas * (1 - probas) / n)
+
+lower_bound <- pmax(0, probas - margin_of_error)
+upper_bound <- pmin(1, probas + margin_of_error)
+
+# Crear un data frame con los resultados
+results <- data.frame(X = X, probas = probas, lower_bound = lower_bound, upper_bound = upper_bound)
+
+# Graficar
+ggplot(results, aes(x = X, y = probas)) +
+  geom_point(color = "blue") +
+  geom_line(aes(y = probas), color = "red") +
+  geom_ribbon(aes(ymin = lower_bound, ymax = upper_bound), fill = "gray", alpha = 0.3) +
+  labs(x = "Número de horas en urgencias", y = "Probabilidad de mortalidad", title = "Relación entre mortalidad y tiempo en urgencias") +
+  theme_minimal()
+
 ```
 
 
