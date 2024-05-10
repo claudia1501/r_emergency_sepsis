@@ -1,0 +1,572 @@
+---
+title: "prueba"
+output: html_document
+date: "2024-02-21"
+---
+
+```{r cars}
+final_df_er_sepsis_prueba <- read.csv("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/selected_data.csv")
+message("Datos cargados correctamente")
+```
+
+```{r}
+final_df_er_sepsis_dummy <- final_df_order %>%
+  select(patientunitstayid, sex,age,ethnicity,er_los_hrs,apacheadmissiondx_other,apacheadmissiondx_pneumonia_bacterial,apacheadmissiondx_sepsis_gi,apacheadmissiondx_sepsis_pulmonary,apacheadmissiondx_sepsis_renal_uti,apacheadmissiondx_sepsis_unknown,unit_ccu_cticu,unit_med_surg_icu,unit_micu,unit_other, apachescoreIV, final_charlson_score, hist_diabetes_bin,hist_copd_bin,hist_chf_bin,hist_cancer_bin,hist_renal_bin,hist_other_bin,unitdischargestatus) 
+```
+
+# Discretizar er_los_hrs
+
+```{r}
+# Discretizar la variable de tiempo en intervalos de una hora
+final_df_er_sepsis$er_los_hrs_d <- cut(final_df_er_sepsis$er_los_hrs, breaks = seq(0,6, by = 1), labels = FALSE)
+final_df_er_sepsis$er_los_hrs_d[final_df_er_sepsis$er_los_hrs == 0] <- 0
+final_df_er_sepsis$er_los_hrs_d[final_df_er_sepsis$er_los_hrs == 6] <- 6
+# Determinar la cantidad de individuos a seleccionar por cada intervalo
+individuals_per_interval <- floor(950*table(final_df_er_sepsis$er_los_hrs_d) / max(table(final_df_er_sepsis$er_los_hrs_d)))
+# Ver cuantas observaciones hay en cada hora
+final_df_er_sepsis %>%
+  group_by(er_los_hrs_d) %>%
+  summarise(n = n())
+# Seleccionar individuos manteniendo la distribución original
+selected_sample <- final_df_er_sepsis %>%
+  group_by(er_los_hrs_d) %>%
+  sample(size = individuals_per_interval, replace = FALSE)
+```
+
+# GLM con 2 variables:mortalidad y er_los_uci
+
+```{r}
+# Crear un data frame con valores para graficar
+plot_data <- data.frame(
+  er_los_hrs = seq(min(final_df_er_sepsis$er_los_hrs), max(final_df_er_sepsis$er_los_hrs), by = 0.08)
+)
+
+# Agregar otras variables predictoras según sea necesario
+#UNITDISCHARGESTATUS
+plot_data$unitdischargestatus = predict(
+  logistic_model, plot_data, type = "response"
+)
+tiempo <- seq(0,6,by = 0.08)
+set.seed(40)
+
+#SEX
+sex_aleatorio <- sample(c("M", "F"), size = length(tiempo), replace = TRUE)
+plot_data$sex <- sex_aleatorio
+
+#AGE
+plot_data$age <- mean(final_df_er_sepsis$age)
+
+#ETHNICITY
+ethnicity_aleatorio <- sample(c( "Caucasian","other/unknown"),size = length(tiempo), replace = TRUE)
+plot_data$ethnicity <- ethnicity_aleatorio
+
+#APACHESOCREIV
+plot_data$apachescoreIV <- mean(final_df_er_sepsis$apachescoreIV)
+
+#FINAL CHARLSON SCORE
+plot_data$final_charlson_score <- mean(final_df_er_sepsis$final_charlson_score)
+
+# Función para calcular la moda
+calculate_mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+#HIST 
+plot_data$hist_diabetes_bin <- calculate_mode(final_df_er_sepsis$hist_diabetes_bin)
+plot_data$hist_renal_bin <- calculate_mode(final_df_er_sepsis$hist_renal_bin)
+plot_data$hist_cancer_bin <- calculate_mode(final_df_er_sepsis$hist_cancer_bin)
+plot_data$hist_chf_bin <- calculate_mode(final_df_er_sepsis$hist_chf_bin)
+plot_data$hist_copd_bin <- calculate_mode(final_df_er_sepsis$hist_copd_bin)
+plot_data$hist_other_bin <- calculate_mode(final_df_er_sepsis$hist_other_bin)
+
+#APACHE ADMISSION DX
+apacheadmission_aleatorio <- sample(c("Pneumonia, bacteria","Sepsis, GI","Sepsis, pulmonary","Sepsis, renal/UTI (including bladder) Sepsis, unknown","Other"),size = length(tiempo),replace = TRUE)
+plot_data$apacheadmissiondx <- apacheadmission_aleatorio
+
+#UNIT type
+unittype_aleatorio <- sample(c("Med-Surg ICU","MICU","Other", "CCU-CTICU"), size = length(tiempo), replace = TRUE)
+plot_data$unittype <- unittype_aleatorio
+
+# Asegurarse de que los niveles de apacheadmissiondx sean los mismos
+plot_data$apacheadmissiondx <- factor(plot_data$apacheadmissiondx, levels = levels(final_df_er_sepsis$apacheadmissiondx))
+
+# Calcular valores predichos y intervalos de confianza
+plot_data$predicted_prob <- predict(logreg_icudeath, newdata = plot_data, type = "response")
+
+# Calcular valores predichos y intervalos de confianza
+plot_data$predicted_prob <- predict(logreg_icudeath, newdata = plot_data, type = "response")
+plot_data$OR <- exp(predict(logreg_icudeath, newdata = plot_data, type = "link"))
+
+# Calcular intervalos de confianza
+plot_data$lower_CI <- exp(predict(logreg_icudeath, newdata = plot_data, type = "link", se.fit = TRUE)$fit - 1.96 * predict(logreg_icudeath, newdata = plot_data, type = "link", se.fit = TRUE)$se.fit)
+plot_data$upper_CI <- exp(predict(logreg_icudeath, newdata = plot_data, type = "link", se.fit = TRUE)$fit + 1.96 * predict(logreg_icudeath, newdata = plot_data, type = "link", se.fit = TRUE)$se.fit)
+
+
+# Calcular las probabilidades predichas con el modelo de regresión logística
+predicted_probs <- predict(logreg_icudeath, newdata = final_df_er_sepsis, type = "response")
+
+# Crear un data frame con las variables de interés y las probabilidades predichas
+plot_data <- data.frame(
+  er_los_hrs = final_df_er_sepsis$er_los_hrs,
+  unitdischargestatus = final_df_er_sepsis$unitdischargestatus,
+  predicted_prob = predicted_probs
+)
+
+# Graficar la relación según el modelo
+library(ggplot2)
+
+ggplot(plot_data, aes(x = er_los_hrs, y = predicted_prob, color = as.factor(unitdischargestatus))) +
+  geom_point() +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"), se = FALSE) +
+  labs(
+    x = "Emergency Room Length of Stay (hours)",
+    y = "Predicted Probability of Unit Discharge",
+    color = "Unit Discharge Status"
+  ) +
+  theme_minimal()
+
+```
+### Con df completo (final_df_er_sepsis_prueba)
+
+```{r}
+Predicted_data <- data.frame(er_los_hrs = seq(min(final_df_er_sepsis$er_los_hrs), max(final_df_er_sepsis$er_los_hrs), by = 0.08))
+
+Predicted_data$unitdischargestatus = predict(
+  logistic_model, Predicted_data, type = "response"
+)
+
+plot(unitdischargestatus ~ er_los_hrs, data = final_df_er_sepsis)
+lines(unitdischargestatus ~ er_los_hrs, Predicted_data, lwd = 2, col = "blue")
+
+predicciones3 <- predict(logistic_model, type = "response")
+clases_predichas3 <- ifelse(predicciones3 > 0.5,1,0)
+matriz_confusion3 <- table( Actual = final_df_er_sepsis$unitdischargestatu, predicha = clases_predichas)
+
+precision3 <- (matriz_confusion3[2, 2] + matriz_confusion3[1, 1]) / sum(matriz_confusion3)
+sensibilidad3 <- matriz_confusion3[2, 2] / sum(matriz_confusion3[2, ])
+f1_score3 <- 2 * (precision3 * sensibilidad3) / (precision3 + sensibilidad3)
+especificidad3 <- matriz_confusion3[1, 1] / sum(matriz_confusion3[1, ])
+exactitud3 <- (matriz_confusion3[1, 1] + matriz_confusion3[2, 2]) / sum(matriz_confusion3)
+
+
+# Muestra las métricas
+cat("Precisión:", precision3, "\n")
+cat("Sensibilidad:", sensibilidad3, "\n")
+cat("Especificidad:", especificidad3, "\n")
+cat("Exactitud:", exactitud3, "\n")
+cat("F1 Score:", f1_score3, "\n")
+
+```
+
+### Con df balanceados
+```{r}
+# Obtén índices de todas las observaciones vivas y muertas
+indices_todas_vivos_prueba <- which(final_df_er_sepsis_prueba$unitdischargestatus == 0)
+indices_todas_muertos_prueba <- which(final_df_er_sepsis_prueba$unitdischargestatus == 1)
+
+# Selecciona 900 vivos y 900 muertos para entrenamiento
+indices_entrenamiento_vivos_prueba <- sample(indices_todas_vivos_prueba, size = 950, replace = FALSE)
+indices_entrenamiento_muertos_prueba <- sample(indices_todas_muertos_prueba, size = 950, replace = FALSE)
+
+# Combina los índices de vivos y muertos para el conjunto de entrenamiento
+indices_entrenamiento_prueba <- c(indices_entrenamiento_vivos_prueba, indices_entrenamiento_muertos_prueba)
+
+# Selecciona las observaciones de entrenamiento
+data_entrenamiento_prueba <- final_df_er_sepsis_prueba[indices_entrenamiento_prueba, ]
+
+# Verifica el balance de clases en el conjunto de entrenamiento
+table(data_entrenamiento_prueba$unitdischargestatus)
+logistic_model4 <- glm(unitdischargestatus ~ er_los_hrs,data = data_entrenamiento_prueba,
+    family = binomial)
+
+Predicted_data4 <- data.frame(er_los_hrs = seq(min(data_entrenamiento_prueba$er_los_hrs), max(data_entrenamiento_prueba$er_los_hrs), by = 0.08))
+
+Predicted_data4$unitdischargestatus = predict(
+  logistic_model4, Predicted_data4, type = "response"
+)
+
+plot(unitdischargestatus ~ er_los_hrs, data = data_entrenamiento_prueba)
+lines(Predicted_data4$er_los_hrs, Predicted_data4$unitdischargestatus, lwd = 2, col = "blue")
+
+
+predicciones4 <- predict(logistic_model4, type = "response")
+clases_predichas4 <- ifelse(predicciones4 > 0.5,1,0)
+matriz_confusion4 <- table( Actual = data_entrenamiento_prueba$unitdischargestatu, predicha = clases_predichas4)
+
+precision4 <- (matriz_confusion4[2, 2] + matriz_confusion4[1, 1]) / sum(matriz_confusion4)
+sensibilidad4 <- matriz_confusion4[2, 2] / sum(matriz_confusion4[2, ])
+f1_score4 <- 2 * (precision4 * sensibilidad4) / (precision4 + sensibilidad4)
+especificidad4 <- matriz_confusion4[1, 1] / sum(matriz_confusion4[1, ])
+exactitud4 <- (matriz_confusion4[1, 1] + matriz_confusion4[2, 2]) / sum(matriz_confusion4)
+
+
+# Muestra las métricas
+cat("Precisión:", precision4, "\n")
+cat("Sensibilidad:", sensibilidad4, "\n")
+cat("Especificidad:", especificidad4, "\n")
+cat("Exactitud:", exactitud4, "\n")
+cat("F1 Score:", f1_score4, "\n")
+
+```
+
+# GLM multivariante
+
+###  Con df completo (final_df_er_sepsis_prueba)
+
+```{r}
+logistic_model_2 <- glm(unitdischargestatus ~ er_los_hrs r_los_hrs + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + unittype + apacheadmissiondx,data = final_df_er_sepsis,
+    family = binomial)
+
+#ER_LOS_HRS
+Predicted_data <- data.frame(er_los_hrs = seq(min(final_df_er_sepsis$er_los_hrs), max(final_df_er_sepsis$er_los_hrs), by = 0.08))
+
+#UNITDISCHARGESTATUS
+Predicted_data$unitdischargestatus = predict(
+  logistic_model, Predicted_data, type = "response"
+)
+tiempo <- seq(0,6,by = 0.08)
+set.seed(40)
+
+#SEX
+sex_aleatorio <- sample(c("M", "F"), size = length(tiempo), replace = TRUE)
+Predicted_data$sex <- sex_aleatorio
+
+#AGE
+Predicted_data$age <- mean(final_df_er_sepsis$age)
+
+#ETHNICITY
+ethnicity_aleatorio <- sample(c( "Caucasian","other/unknown"),size = length(tiempo), replace = TRUE)
+Predicted_data$ethnicity <- ethnicity_aleatorio
+
+#APACHESOCREIV
+Predicted_data$apachescoreIV <- mean(final_df_er_sepsis$apachescoreIV)
+
+#FINAL CHARLSON SCORE
+Predicted_data$final_charlson_score <- mean(final_df_er_sepsis$final_charlson_score)
+
+# Función para calcular la moda
+calculate_mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+#HIST 
+Predicted_data$hist_diabetes_bin <- calculate_mode(final_df_er_sepsis$hist_diabetes_bin)
+Predicted_data$hist_renal_bin <- calculate_mode(final_df_er_sepsis$hist_renal_bin)
+Predicted_data$hist_cancer_bin <- calculate_mode(final_df_er_sepsis$hist_cancer_bin)
+Predicted_data$hist_chf_bin <- calculate_mode(final_df_er_sepsis$hist_chf_bin)
+Predicted_data$hist_copd_bin <- calculate_mode(final_df_er_sepsis$hist_copd_bin)
+Predicted_data$hist_other_bin <- calculate_mode(final_df_er_sepsis$hist_other_bin)
+
+#APACHE ADMISSION DX
+Predicted_data$apacheadmissiondx_other <- calculate_mode(final_df_er_sepsis$apacheadmissiondx_other)
+Predicted_data$apacheadmissiondx_pneumonia_bacterial <- calculate_mode(final_df_er_sepsis$apacheadmissiondx_pneumonia_bacterial)
+Predicted_data$apacheadmissiondx_sepsis_gi <- calculate_mode(final_df_er_sepsis$apacheadmissiondx_sepsis_gi)
+Predicted_data$apacheadmissiondx_sepsis_pulmonary <- calculate_mode(final_df_er_sepsis$apacheadmissiondx_sepsis_pulmonary)
+Predicted_data$apacheadmissiondx_sepsis_renal_uti <- calculate_mode(final_df_er_sepsis$apacheadmissiondx_sepsis_renal_uti)
+Predicted_data$apacheadmissiondx_sepsis_unknown <- calculate_mode(final_df_er_sepsis$apacheadmissiondx_sepsis_unknown)
+
+#UNIT STAY
+Predicted_data$unit_ccu_cticu <- calculate_mode(final_df_er_sepsis$unit_ccu_cticu)
+Predicted_data$unit_med_surg_icu <- calculate_mode(final_df_er_sepsis$unit_med_surg_icu)
+Predicted_data$unit_micu <- calculate_mode(final_df_er_sepsis$unit_micu)
+Predicted_data$unit_other <- calculate_mode(final_df_er_sepsis$unit_other)
+
+
+plot(unitdischargestatus ~ er_los_hrs,data = final_df_er_sepsis)
+lines(unitdischargestatus ~ er_los_hrs, Predicted_data, lwd = 2, col = "blue")
+
+
+# Predecir las probabilidades
+predicted_probs <- predict(logistic_model_2, newdata = Predicted_data, type = "response")
+
+# Convertir probabilidades a clases predichas (0 o 1)
+predicted_classes <- ifelse(predicted_probs > 0.5, 1, 0)
+
+# Crear la matriz de confusión
+conf_matrix5 <- table(Predicted = predicted_classes, Actual = final_df_er_sepsis$unitdischargestatus)
+
+# Calcular métricas
+precision5 <- (conf_matrix5[2, 2] + conf_matrix5[1, 1]) / sum(conf_matrix5)
+sensibilidad5 <- conf_matrix5[2, 2] / sum(conf_matrix5[2, ])
+f1_score5 <- 2 * (precision5 * sensibilidad5) / (precision5 + sensibilidad5)
+especificidad5 <- conf_matrix5[1, 1] / sum(conf_matrix5[1, ])
+exactitud5 <- (conf_matrix5[1, 1] + conf_matrix5[2, 2]) / sum(conf_matrix5)
+
+# Imprimir las métricas
+cat("Sensibilidad:", sensibilidad5, "\n")
+cat("Especificidad:", especificidad5, "\n")
+cat("Exactitud:", exactitud5, "\n")
+cat("Precisión:", precision5, "\n")
+cat("F1 Score:", f1_score5, "\n")
+
+```
+
+
+### Con df completo train 80% y test 20%
+```{r}
+
+indices_todas_vivos <- which(final_df_er_sepsis$unitdischargestatus == 0)
+indices_todas_muertos <- which(final_df_er_sepsis$unitdischargestatus == 1)
+
+# Selecciona 950 vivos y 950 muertos para entrenamiento
+indices_vivos <- sample(indices_todas_vivos, size = 950, replace = FALSE)
+indices_muertos <- sample(indices_todas_muertos, size = 950, replace = FALSE)
+
+# Combina los índices de vivos y muertos para el conjunto de entrenamiento
+indices_balanceado <- c(indices_vivos, indices_muertos)
+
+# Selecciona las observaciones de entrenamiento
+data_balanceado <- final_df_er_sepsis[indices_balanceado, ]
+
+# Verifica el balance de clases en el conjunto de entrenamiento
+table(data_balanceado$unitdischargestatus)
+
+
+set.seed(123)
+indice_particion <- createDataPartition(data_balanceado$unitdischargestatus, p = 0.8, list = FALSE,times = 1)
+
+conjunto_entrenamiento <- data_balanceado[indice_particion, ]
+conjunto_prueba <- data_balanceado[-indice_particion, ]
+
+##MODELO GLM
+logistic_model_3 <- glm(unitdischargestatus ~ er_los_hrs + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + apacheadmissiondx_other + apacheadmissiondx_pneumonia_bacterial + apacheadmissiondx_sepsis_gi + apacheadmissiondx_sepsis_pulmonary + apacheadmissiondx_sepsis_renal_uti + apacheadmissiondx_sepsis_unknown + unit_ccu_cticu + unit_med_surg_icu + unit_micu + unit_other ,data = conjunto_entrenamiento,
+    family = binomial)
+ #+ apacheadmissiondx_sepsis_unknown + unit_other
+##Predicciones
+predicciones2 <- predict(logistic_model_3, newdata = conjunto_prueba, type = "response")
+
+clases_predichas2 <- ifelse(predicciones2 > 0.5,1,0)
+
+matriz_confusion2 <- confusionMatrix(table(conjunto_prueba$unitdischargestatus, clases_predichas2))
+print(matriz_confusion2)
+
+precision2 <- matriz_confusion2$byClass["Pos Pred Value"]
+sensibilidad2 <- matriz_confusion2$byClass["Sensitivity"]
+especificidad2 <- matriz_confusion2$byClass["Specificity"]
+exactitud2 <- matriz_confusion2$overall["Accuracy"]
+f1_score <- 2 * (precision2 * sensibilidad2) / (precision2 + sensibilidad2)
+
+
+# Imprime las métricas
+cat("Precisión:", precision2, "\n")
+cat("Sensibilidad:", sensibilidad2, "\n")
+cat("Especificidad:", especificidad2, "\n")
+cat("Exactitud:", exactitud2, "\n")
+cat("Puntaje F1:", f1_score, "\n")
+
+# Calcula la curva ROC
+curva_roc <- roc(conjunto_prueba$unitdischargestatus, predicciones2)
+
+# Realiza el gráfico de la curva ROC
+plot(curva_roc, main = "Curva ROC", col = "blue", lwd = 2)
+
+# Opcional: Añade un punto para resaltar el rendimiento de tu modelo
+#points(curva_roc, pch = 16, col = "red", cex = 1.5)
+
+# Opcional: Etiqueta el punto resaltado
+#text(curva_roc, col = "red", pos = 4, offset = 0.5, cex = 1.2)
+
+# Añade una leyenda
+legend("bottomright", legend = c("Curva ROC", "Modelo"), col = c("blue", "red"), lwd = c(2, 1))
+
+# Imprime el área bajo la curva ROC
+cat("Área bajo la curva ROC:", area_roc, "\n")
+```
+
+
+# GAM BALANCEADO 
+División datos para balancear valores muertes y vivos
+
+```{r}
+#Semilla para reproducibilidad
+set.seed(123)
+
+########### TRAIN
+# Obtén índices de todas las observaciones vivas y muertas
+indices_todas_vivos <- which(final_df_er_sepsis$unitdischargestatus == 0)
+indices_todas_muertos <- which(final_df_er_sepsis$unitdischargestatus == 1)
+
+# Selecciona 900 vivos y 900 muertos para entrenamiento
+indices_entrenamiento_vivos <- sample(indices_todas_vivos, size = 900, replace = FALSE)
+indices_entrenamiento_muertos <- sample(indices_todas_muertos, size = 900, replace = FALSE)
+
+# Combina los índices de vivos y muertos para el conjunto de entrenamiento
+indices_entrenamiento <- c(indices_entrenamiento_vivos, indices_entrenamiento_muertos)
+
+# Selecciona las observaciones de entrenamiento
+data_entrenamiento <- final_df_er_sepsis[indices_entrenamiento, ]
+
+# Verifica el balance de clases en el conjunto de entrenamiento
+table(data_entrenamiento$unitdischargestatus)
+
+
+########## TEST
+# Obtén índices de todas las observaciones vivas y muertas
+indices_vivos <- which(final_df_er_sepsis$unitdischargestatus == 0)
+indices_muertos <- which(final_df_er_sepsis$unitdischargestatus == 1)
+
+# Selecciona 900 vivos y 900 muertos para entrenamiento
+indices_test_vivos <- sample(indices_vivos, size = 50, replace = FALSE)
+indices_test_muertos <- sample(indices_muertos, size = 50, replace = FALSE)
+
+# Combina los índices de vivos y muertos para el conjunto de entrenamiento
+indices_test <- c(indices_test_vivos, indices_test_muertos)
+
+# Selecciona las observaciones de entrenamiento
+data_test <- final_df_er_sepsis[indices_test, ]
+
+# Verifica el balance de clases en el conjunto de entrenamiento
+table(data_test$unitdischargestatus)
+
+###### GAM
+gam_data_train <- 
+  gam(
+    unitdischargestatus ~ s(er_los_hrs, k=3) + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + apacheadmissiondx_other + apacheadmissiondx_pneumonia_bacterial + apacheadmissiondx_sepsis_gi + apacheadmissiondx_sepsis_pulmonary + apacheadmissiondx_sepsis_renal_uti + apacheadmissiondx_sepsis_unknown + unit_ccu_cticu + unit_med_surg_icu + unit_micu + unit_other, data = data_entrenamiento,
+    family = binomial)
+
+
+# Make predictions on the test data
+data_test$predicted <- predict(gam_data_train, newdata = data_test, type = "response")
+data_test$predicted_bin <- ifelse(data_test$predicted > 0.5, 1, 0)
+
+# Calculate precision, recall, and F1 score
+precision <- sum(data_test$predicted_bin == 1 & data_test$unitdischargestatus == 1) / sum(data_test$predicted_bin == 1)
+recall <- sum(data_test$predicted_bin == 1 & data_test$unitdischargestatus == 1) / sum(data_test$unitdischargestatus == 1)
+f1 <- 2 * precision * recall / (precision + recall)
+
+# Print the results
+print(precision)
+print(recall)
+print(f1)
+
+coef_data <- data.frame(coef = coef(gam_data_train))
+se <- sqrt(diag(vcov(gam_data_train)))
+z_value <- qnorm(0.95) # 95% confidence level - detection prevalence
+#Redondea decimales a 2
+
+coef_data <- round(coef_data, 2)
+
+# Calculate the odds ratios and their respective lower and upper confidence limits
+coef_data$OR <- exp(coef_data$coef)
+coef_data$OR_lower <- exp(coef_data$coef - z_value * se)  # Usar 0.975 para obtener IC del 95%
+coef_data$OR_upper <- exp(coef_data$coef + z_value * se)
+
+# Filtrar las variables de interés
+#coef_data2 <- coef_data %>%
+#  filter(predictor != "(Intercept)")
+
+# Calcular la categoría (Adverse, Protective, Inconclusive)
+coef_data <- coef_data %>%
+  mutate(
+    adverse_protective = case_when(
+      OR_lower > 1 & OR_upper > 1 ~ "Adverse",
+      OR_lower < 1 & OR_upper < 1 ~ "Protective",
+      TRUE ~ "Inconclusive"
+    )
+  )
+coef_data$adverse_protective <- as.factor(coef_data$adverse_protective)
+
+# Crear el forest plot
+forest_plot <- ggplot(coef_data, aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = rownames(coef_data))) +
+  geom_point(aes(color = adverse_protective), size = 3) +
+  geom_errorbarh(aes(color = adverse_protective), height = 0.1, linewidth = 0.5) +
+  geom_vline(xintercept = 1, linetype = "solid", color = "gray50") +
+  labs(
+    x = "Odds Ratio (with 95% Confidence Interval)",
+    y = "Predictor Variable",
+    title = "Odds Ratios and Confidence Intervals for mortality emergency sepsis ICU"
+  ) +
+  scale_color_manual(values = c("Adverse" = "#c0392b", "Protective" = "#27ae60", "Inconclusive" = "gray70")) +
+  theme_minimal() 
+
+print(forest_plot)
+
+
+# Variable er_los_hrs
+gam_plot <-plot(gam_data_train, rug = TRUE,scale = 0)
+x <- gam_plot[[1]]$x
+fit <- gam_plot[[1]]$fit
+se <- gam_plot[[1]]$se
+
+fit_values <- as.vector(fit)
+se_values <- as.vector(se)
+
+
+# Convert odds ratio to percentage chance of ICU mortality 
+fit_chance <- (exp(fit) / (1 + exp(fit))) 
+lower_bound_chance <- (exp(fit - 2 * se) / (1 + exp(fit - 2 * se))) 
+upper_bound_chance <- (exp(fit + 2 * se) / (1 + exp(fit + 2 * se))) 
+
+
+df_train <- 
+  data.frame(
+    x = x, y = fit_chance,
+    ymin = lower_bound_chance , ymax = upper_bound_chance
+  )
+
+ggplot(df_train, mapping = aes(x = x, y = fit_chance)) +
+  geom_ribbon(aes(ymin = lower_bound_chance, ymax = upper_bound_chance), alpha = 0.3) +
+  geom_line(color = "blue") +  # Añade la línea de ajuste
+  labs(
+    x = "Emergency Room Length of Stay (hours)", 
+    y = "Mortality in the ICU probability (%)", 
+    title = "Generative Additive Modeling"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "italic"),
+    panel.border = element_rect(color = "black", fill = NA, size = 0.6),
+    legend.position = "none"
+  ) +
+  ylim(0.2, 1)
+
+ggplot(df_train, mapping = aes(x = x, y = fit_chance)) +
+  stat_smooth(method = gam, formula = y ~ s(x)) +
+  geom_ribbon(aes(ymin = lower_bound_chance, ymax = upper_bound_chance), alpha = 0.3) +
+   labs(
+    x = "Emergency Room Length of Stay (hours)", 
+    y = "Mortality in the ICU probability (%)", 
+    title = "Generative Additive Modeling"
+  ) +
+  theme_minimal()
+```
+###Unittype
+
+```{r}
+# Variable unittype, agrupar en las 5 categorías con mayor valor y el resto agrupadas en la variable other (esto se hace debido a la poca cantidad que hay de muchas de esas categorias de tipo de UCI)
+
+# Cuenta la frecuencia de cada categoría
+unittype_counts <- final_df %>%
+  count(unittype, name = "Frequency")
+# Identifica las 5 categorías más frecuentes
+top_categories <- unittype_counts %>%
+  top_n(n = 4, wt = Frequency) %>%
+  pull(unittype)
+# Agrupa las categorías menos frecuentes bajo "Other"
+final_df <- final_df %>%
+ mutate(unittype = fct_lump(unittype, n = 4, other_level = "Other"))
+# Vuelve a contar la frecuencia después de la agrupación
+top_unittype <- final_df %>%
+  count(unittype, name = "Frequency")
+# Muestra el resultado
+print(top_unittype)
+
+#Lista de las 5 categorías con más valores
+top_categories <- c( "Cardiac ICU",
+  "CCU-CTICU",
+  "Med-Surg ICU",
+  "MICU",
+  "Other")
+
+# Crear una nueva variable "apacheadmissiondx_recoded" que recodifique las categorías no incluidas en el ranking como "Other"
+final_df <- final_df %>%
+  mutate(
+    unittype = recode(
+      unittype,
+      "CSICU" = "Other",
+      "CTICU" = "Other",
+      "Neuro ICU" = "Other",
+      "SICU" = "Other"))
+```

@@ -72,18 +72,15 @@ con <- dbConnect(
 
 Loading queries and extracting the data.
 ```{r}
-patients_dates <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/patients_date.sql"))
 apacheadmission <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/apacheadmissiondx.sql"))
 patients_emergency <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/patient_emergency.sql"))
 patients_admit <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/patients_admit.sql"))
 patients_total <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/patient_total.sql"))
 apachescore <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/apachescore.sql"))
 sensitivitylevel <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/sensitivitylevel.sql"))
-apache_sepsis <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/apache_sepsis.sql"))
-apache_infection <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/apache_infection.sql"))
 charlson_score <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/charlson_score.sql"))
 history_dx <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/history_dx.sql"))
-
+pivoted_med <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/pivoted_med.sql"))
 ```
 
 # Joining 1º df
@@ -97,7 +94,8 @@ dfs_to_join <- list(patients_total,
                     apachescore,
                     sensitivitylevel,
                     charlson_score,
-                    history_dx) #apache_sepsis,apache_infection
+                    history_dx,
+                    pivoted_med)
 
 final_df <- Reduce(function(x,y) merge(x,y, by = "patientunitstayid", all.x = TRUE), dfs_to_join)
 
@@ -137,6 +135,7 @@ print(c)
 # Sex
 final_df <- final_df %>%
   rename(sex = gender) %>%
+  mutate(sex = ifelse(sex != "Male" & sex != "Female", NA, sex)) %>%
   drop_na(sex)
 
 ##Criterio exclusión
@@ -182,58 +181,12 @@ write.csv(final_df, file = "C:/Users/cjimenez10J/Documents/projects/r_urgencias_
 ### Sex
 
 ```{r}
-#Variable género = sex, a numérica: hombre = 0, mujer = 1
+# Cambiar Male a M y Female a F
 final_df <- final_df %>%
-  mutate(sex = ifelse(
-    sex == "Male", "M",
-    ifelse(
-      sex == "Female", "F", NA
-      #NA_character_   #Agregué un valor por defecto para el caso en que sex no sea ni "Male" ni "Female"
-    )
-  )) %>%
-  mutate(sex = as.factor(sex)) %>%
-  #mutate(sex = forcats::fct_na_value_to_level(sex)) %>%
-  filter(sex != "Unknown")
+  mutate(sex = ifelse(sex == "Male", "M", ifelse(sex == "Female", "F", sex)))
+
 ```
 
-###Unittype
-
-```{r}
-# Variable unittype, agrupar en las 5 categorías con mayor valor y el resto agrupadas en la variable other (esto se hace debido a la poca cantidad que hay de muchas de esas categorias de tipo de UCI)
-
-# Cuenta la frecuencia de cada categoría
-unittype_counts <- final_df %>%
-  count(unittype, name = "Frequency")
-# Identifica las 5 categorías más frecuentes
-top_categories <- unittype_counts %>%
-  top_n(n = 4, wt = Frequency) %>%
-  pull(unittype)
-# Agrupa las categorías menos frecuentes bajo "Other"
-final_df <- final_df %>%
- mutate(unittype = fct_lump(unittype, n = 4, other_level = "Other"))
-# Vuelve a contar la frecuencia después de la agrupación
-top_unittype <- final_df %>%
-  count(unittype, name = "Frequency")
-# Muestra el resultado
-print(top_unittype)
-
-#Lista de las 5 categorías con más valores
-top_categories <- c( "Cardiac ICU",
-  "CCU-CTICU",
-  "Med-Surg ICU",
-  "MICU",
-  "Other")
-
-# Crear una nueva variable "apacheadmissiondx_recoded" que recodifique las categorías no incluidas en el ranking como "Other"
-final_df <- final_df %>%
-  mutate(
-    unittype = recode(
-      unittype,
-      "CSICU" = "Other",
-      "CTICU" = "Other",
-      "Neuro ICU" = "Other",
-      "SICU" = "Other"))
-```
 
 ### Apache admission dx
 
@@ -373,7 +326,6 @@ final_df<- final_df %>%
   mutate(hist_pud_bin = replace_na(hist_pud_bin, 0)) %>%
   mutate(hist_liver_bin = replace_na(hist_liver_bin, 0))
 ```
-
 ```{r}
 # Lista de variables
 variables <- c("hist_metastasis_bin", "hist_vih_sida_bin", "hist_cirrosis_liver_bin", "hist_stroke_bin", 
@@ -404,32 +356,55 @@ final_df <- final_df %>%
 
 ```
 
+##Pivoted_med 
+
+```{r}
+final_df <- final_df %>%
+  mutate(norepinephrine = replace_na(norepinephrine, 0)) %>%
+  mutate(epinephrine = replace_na(epinephrine, 0)) %>%
+  mutate(dopamine = replace_na(dopamine, 0)) %>%
+  mutate(dobutamine = replace_na(dobutamine, 0)) %>%
+  mutate(phenylephrine = replace_na(phenylephrine, 0)) %>%
+  mutate(vasopressin = replace_na(vasopressin, 0)) %>%
+  mutate(milrinone = replace_na(milrinone, 0)) %>%
+  mutate(heparin = replace_na(heparin, 0)) %>%
+  mutate(warfarin = replace_na(warfarin, 0))
+```
+
+
 # Df order 
 
 ```{r}
 #Orden de las variables
 final_df_order <- final_df %>%
-  select(patientunitstayid, sex,age,ethnicity,er_los_hrs,apacheadmissiondx,unittype, apachescoreIV,bact_resist_level, final_charlson_score, hist_diabetes_bin,hist_copd_bin,hist_chf_bin,hist_cancer_bin,hist_renal_bin,hist_other_bin,unitdischargestatus) #sepsis_bin,infection_bin
+  select(patientunitstayid, sex,age,ethnicity,er_los_hrs,apacheadmissiondx, apachescoreIV,bact_resist_level, final_charlson_score, hist_diabetes_bin,hist_copd_bin,hist_chf_bin,hist_cancer_bin,hist_renal_bin,hist_other_bin, norepinephrine,epinephrine,dopamine,dobutamine,phenylephrine, vasopressin,milrinone, heparin, warfarin, unitdischargestatus) #sepsis_bin,infection_bin
 ```
+
+# Comparación de pacientes con shock y uso de vasopresores
+
+```{r}
+# Supongamos que tu DataFrame se llama df
+
+# Calcula el número de vasopresores aplicados por paciente
+final_df_order <- final_df_order %>%
+  mutate(num_vasopresores = rowSums(select(., starts_with("vasopresor_"))))
+
+# Calcula si al menos un vasopresor fue aplicado por paciente
+final_df_order <- final_df_order %>%
+  mutate(num_vasopresores = rowSums(select(., c("norepinephrine", "epinephrine", "dopamine", "dobutamine", "phenylephrine", "vasopressin", "milrinone", "heparin", "warfarin"))))
+
+# Calcula el porcentaje de pacientes con apacheadmission y al menos un vasopresor aplicado
+porcentaje <- final_df_order %>%
+  group_by(patientunitstayid) %>%
+  summarize(porcentaje = mean(apacheadmissiondx & al_menos_un_vasopresor) * 100)
+
+print(porcentaje)
+
+```
+
 
 ##Variables dummy
 
-### Unittype
-
-```{r}
-#Transformar a dummy
-unittype_ <- factor(final_df_order$unittype)
-dummies_unittype <- dummy_cols(final_df_order$unittype, remove_first_dummy =  FALSE)
-
-# Incluir en df 
-final_df_order <- data.frame(final_df_order,dummies_unittype[,2:5])
-
-#Cambiamos nombrs de las variables
-final_df_order <- rename(final_df_order, unit_ccu_cticu = .data_CCU.CTICU) %>%
-  rename(unit_med_surg_icu = .data_Med.Surg.ICU) %>%
-  rename(unit_micu = .data_MICU) %>%
-  rename(unit_other = .data_Other)
-```
 
 ### Apache admission dx
 ```{r}
@@ -452,12 +427,9 @@ final_df_order <- rename(final_df_order,apacheadmissiondx_other = .data_Other) %
 
 ```{r}
 final_df_er_sepsis <- final_df_order %>%
-  select(unitdischargestatus,er_los_hrs, sex, age, ethnicity, apachescoreIV,  final_charlson_score, hist_diabetes_bin, hist_renal_bin, hist_cancer_bin, hist_chf_bin, hist_copd_bin,hist_other_bin,unittype,apacheadmissiondx,bact_resist_level)
+  select(unitdischargestatus,er_los_hrs, sex, age, ethnicity, apachescoreIV,  final_charlson_score, hist_diabetes_bin, hist_renal_bin, hist_cancer_bin, hist_chf_bin, hist_copd_bin,hist_other_bin,apacheadmissiondx,bact_resist_level,norepinephrine,epinephrine,dopamine,dobutamine,phenylephrine, vasopressin,milrinone, heparin, warfarin)
 
 final_df_er_sepsis <- distinct(final_df_er_sepsis)
-
-final_df_er_sepsis_dummy <- final_df_order %>%
-  select(patientunitstayid, sex,age,ethnicity,er_los_hrs,apacheadmissiondx_other,apacheadmissiondx_pneumonia_bacterial,apacheadmissiondx_sepsis_gi,apacheadmissiondx_sepsis_pulmonary,apacheadmissiondx_sepsis_renal_uti,apacheadmissiondx_sepsis_unknown,unit_ccu_cticu,unit_med_surg_icu,unit_micu,unit_other, apachescoreIV, final_charlson_score, hist_diabetes_bin,hist_copd_bin,hist_chf_bin,hist_cancer_bin,hist_renal_bin,hist_other_bin,unitdischargestatus) #sepsis_bin,infection_bin
 ```
 
 ## Variable factor
@@ -554,6 +526,59 @@ labelloc=\"t\";  // Colocar el título arriba del diagrama
 grViz(flowchart_code)
 ```
 
+#Pruebas de rendimiento de cada variable
+
+```{r}
+chisq.test(final_df_er_sepsis$unittype, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
+chisq.test(final_df_er_sepsis$apacheadmissiondx, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
+chisq.test(final_df_er_sepsis$ethnicity, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
+chisq.test(final_df_er_sepsis$bact_resist_level, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
+chisq.test(final_df_er_sepsis$hist_diabetes_bin, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
+chisq.test(final_df_er_sepsis$hist_renal_bin, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
+chisq.test(final_df_er_sepsis$hist_cancer_bin, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
+chisq.test(final_df_er_sepsis$hist_chf_bin, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
+chisq.test(final_df_er_sepsis$hist_copd_bin, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
+chisq.test(final_df_er_sepsis$hist_other_bin, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
+chisq.test(final_df_er_sepsis$er_los_hrs, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
+chisq.test(final_df_er_sepsis$age, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
+chisq.test(final_df_er_sepsis$apachescoreIV, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
+chisq.test(final_df_er_sepsis$final_charlson_score, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
+```
+
+```{r}
+# Paso 2: Análisis de Variables Numéricas
+
+# Correlación entre er_los_hrs, age, apachescoreIV y final_charlson_score con la variable de resultado
+cor(final_df_er_sepsis$er_los_hrs, final_df_er_sepsis$unitdischargestatus, use = "everything",
+    method = c("spearman"))
+cor(final_df_er_sepsis$age, final_df_er_sepsis$unitdischargestatus, use = "everything", method = "spearman")
+cor(final_df_er_sepsis$apachescoreIV, final_df_er_sepsis$unitdischargestatus, use = "everything", method = "spearman")
+cor(final_df_er_sepsis$final_charlson_score, final_df_er_sepsis$unitdischargestatus, use = "everything", method = "spearman")
+
+```
+
+```{r}
+# Paso 3: Análisis de Variables de Texto
+
+# Conversión de bact_resist_level en una variable categórica
+final_df_er_sepsis$bact_resist_level <- as.factor(final_df_er_sepsis$bact_resist_level)
+
+# Análisis de la relación entre bact_resist_level y la variable de resultado
+table(final_df_er_sepsis$bact_resist_level, final_df_er_sepsis$unitdischargestatus)
+
+# Cargar la biblioteca para realizar pruebas de chi-cuadrado
+library(stats)
+
+# Crear la tabla de contingencia
+contingency_table <- table(final_df_er_sepsis$bact_resist_level, final_df_er_sepsis$unitdischargestatus)
+
+# Realizar la prueba de chi-cuadrado
+chi_sq_test <- chisq.test(contingency_table)
+
+# Mostrar los resultados de la prueba
+print(chi_sq_test)
+
+```
 
 
 
