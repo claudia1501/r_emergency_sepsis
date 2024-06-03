@@ -17,13 +17,13 @@ library(Hmisc)
 final_df_er_sepsis <- read.csv("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/selected_data.csv")
 message("Datos cargados correctamente")
 #Lista de variables incluidas en la table 1
-vars_in_table1 <- names(final_df_er_sepsis %>% select( unitdischargestatus, er_los_hrs, sex , age , ethnicity , apachescoreIV ,  final_charlson_score , hist_diabetes_bin , hist_renal_bin , hist_cancer_bin , hist_chf_bin , hist_copd_bin , hist_other_bin , apacheadmissiondx,bact_resist_level,norepinephrine,epinephrine,dopamine,dobutamine,phenylephrine, vasopressin,milrinone, heparin, warfarin,num_vasopresores))
+vars_in_table1 <- names(final_df_order %>% select( unitdischargestatus, er_los_hrs, sex , age , ethnicity , apachescoreIV ,  final_charlson_score , hist_diabetes_bin , hist_renal_bin , hist_cancer_bin , hist_chf_bin , hist_copd_bin , hist_other_bin , apacheadmissiondx,bact_resist_level,norepinephrine,epinephrine, dopamine, dobutamine, phenylephrine, vasopressin,  milrinone, heparin, warfarin))
 
 ```
 
 #Crea un conjunto de datos con solo variables seleccionadas utilizando nuestro conjunto de datos original y genera una lista vacía para almacenar variables categóricas
 ```{r}
-table1_dataset <- final_df_er_sepsis[,vars_in_table1]
+table1_dataset <- final_df_order[,vars_in_table1]
 cat_variables <- rep(NA, length(vars_in_table1))
 stratifyby <- "unitdischargestatus"
 

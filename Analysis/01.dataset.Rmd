@@ -81,6 +81,7 @@ sensitivitylevel <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_
 charlson_score <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/charlson_score.sql"))
 history_dx <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/history_dx.sql"))
 pivoted_med <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/pivoted_med.sql"))
+shock <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/shock.sql"))
 ```
 
 # Joining 1º df
@@ -126,7 +127,7 @@ final_df <- final_df %>%
 
 # Quitar valores muy altos considerados outcome
 final_df <- final_df %>%
-  filter(er_los_hrs <= 24)
+  filter(er_los_hrs <= 6)
 
 print('Patients in emergency department during 24 hrs')
 c <- nrow(final_df)
@@ -174,6 +175,11 @@ g <- nrow(final_df)
 print(g)
 
 write.csv(final_df, file = "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/final_df_sinimputar.csv", row.names = FALSE)
+
+##Shock
+final_df <- final_df %>%
+  drop_na(treatmentstring)
+  
 ```
 
 # Imputations 
@@ -271,7 +277,7 @@ final_df <- final_df %>%
 ```{r}
 # Change empty string = other
 final_df <- final_df %>%
-  mutate(ethnicity = ifelse(ethnicity %in% c("", "other", "Other/Unknown"), "other/unknown", ethnicity))
+  mutate(ethnicity = ifelse(ethnicity %in% c("", "other", "Other/Unknown", "Native American", "Asian"), "other/unknown", ethnicity))
 ```
 
 ### Stratify: Unitdischargestatus (estado del que sale de la unidad)
@@ -377,7 +383,7 @@ final_df <- final_df %>%
 ```{r}
 #Orden de las variables
 final_df_order <- final_df %>%
-  select(patientunitstayid, sex,age,ethnicity,er_los_hrs,apacheadmissiondx, apachescoreIV,bact_resist_level, final_charlson_score, hist_diabetes_bin,hist_copd_bin,hist_chf_bin,hist_cancer_bin,hist_renal_bin,hist_other_bin, norepinephrine,epinephrine,dopamine,dobutamine,phenylephrine, vasopressin,milrinone, heparin, warfarin, unitdischargestatus) #sepsis_bin,infection_bin
+  select(patientunitstayid, sex,age,ethnicity,er_los_hrs,apacheadmissiondx, apachescoreIV,bact_resist_level, final_charlson_score, hist_diabetes_bin,hist_copd_bin,hist_chf_bin,hist_cancer_bin,hist_renal_bin,hist_other_bin, norepinephrine,epinephrine, dopamine, dobutamine, phenylephrine, vasopressin,  milrinone, heparin, warfarin, unitdischargestatus) #sepsis_bin,infection_bin
 ```
 
 # Comparación de pacientes con shock y uso de vasopresores
@@ -451,7 +457,7 @@ print(porcentaje_vivo_)
 
 ```{r}
 final_df_er_sepsis <- final_df_order %>%
-  select(unitdischargestatus,er_los_hrs, sex, age, ethnicity, apachescoreIV,  final_charlson_score, hist_diabetes_bin, hist_renal_bin, hist_cancer_bin, hist_chf_bin, hist_copd_bin,hist_other_bin,apacheadmissiondx,bact_resist_level,norepinephrine,epinephrine,dopamine,dobutamine,phenylephrine, vasopressin,milrinone, heparin, warfarin, num_vasopresores)
+  select(unitdischargestatus,er_los_hrs, sex, age, ethnicity, apachescoreIV,  final_charlson_score, hist_diabetes_bin, hist_renal_bin, hist_cancer_bin, hist_chf_bin, hist_copd_bin,hist_other_bin,apacheadmissiondx,bact_resist_level,treatmentstring, treatmentoffset)
 
 final_df_er_sepsis <- distinct(final_df_er_sepsis)
 ```
@@ -549,5 +555,34 @@ print(chi_sq_test)
 
 ```
 
+
+
+```{r}
+# Carga de las librerías necesarias
+library(ggplot2)
+
+library(dplyr)
+
+# Agrupar los datos por intervalos de 5 horas
+final_df_er_sepsis <- final_df_er_sepsis %>%
+  mutate(er_los_hrs_group = cut(er_los_hrs, breaks = seq(0, max(er_los_hrs), by = 5), include.lowest = TRUE))
+
+# Calcular el recuento de pacientes que mueren en cada intervalo
+recuento_muertes <- final_df_er_sepsis %>%
+  filter(unitdischargestatus == 1) %>%
+  group_by(er_los_hrs_group) %>%
+  summarise(muertes = n(), unitdischargestatus = 1)  # Agregar unitdischargestatus
+
+# Gráfico de dispersión con ggplot2
+ggplot(final_df_er_sepsis, aes(x = er_los_hrs, color = factor(unitdischargestatus))) +
+  geom_density() +
+  geom_text(data = recuento_muertes, aes(x = as.numeric(er_los_hrs_group), y = 0, label = muertes),hjust = 1, vjust = -1, size = 3) +
+  labs(x = "Tiempo en UCI (horas)", y = "Mortality (N=13.131)") +
+  scale_color_manual(values = c("blue", "red"), labels = c("Vive", "Muere")) +
+  theme_minimal()
+
+
+
+```
 
 
