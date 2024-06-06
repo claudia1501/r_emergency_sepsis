@@ -7,7 +7,7 @@ SELECT
     CASE 
       WHEN sensitivitylevel = 'Resistant' THEN 'Resistant'
       WHEN sensitivitylevel IN ('Sensitive', 'Intermediate') THEN 'Not resistant'
-      WHEN sensitivitylevel = '' THEN 'No infection'
+      WHEN sensitivitylevel = '' THEN 'Not infection'
       ELSE sensitivitylevel
     END
   ) AS bact_resist_level
