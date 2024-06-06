@@ -82,6 +82,7 @@ charlson_score <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_ur
 history_dx <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/history_dx.sql"))
 pivoted_med <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/pivoted_med.sql"))
 shock <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/shock.sql"))
+shock_vassop <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/shock_vassop.sql"))
 ```
 
 # Joining 1º df
@@ -96,7 +97,7 @@ dfs_to_join <- list(patients_total,
                     sensitivitylevel,
                     charlson_score,
                     history_dx,
-                    pivoted_med)
+                    shock_vassop)
 
 final_df <- Reduce(function(x,y) merge(x,y, by = "patientunitstayid", all.x = TRUE), dfs_to_join)
 
@@ -127,7 +128,7 @@ final_df <- final_df %>%
 
 # Quitar valores muy altos considerados outcome
 final_df <- final_df %>%
-  filter(er_los_hrs <= 6)
+  filter(er_los_hrs <= 8)
 
 print('Patients in emergency department during 24 hrs')
 c <- nrow(final_df)
@@ -176,10 +177,6 @@ print(g)
 
 write.csv(final_df, file = "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/final_df_sinimputar.csv", row.names = FALSE)
 
-##Shock
-final_df <- final_df %>%
-  drop_na(treatmentstring)
-  
 ```
 
 # Imputations 
@@ -363,6 +360,19 @@ final_df <- final_df %>%
 
 ```
 
+##Treatments
+```{r}
+# Crear una columna nueva con el número de tratamientos por paciente, considerando NAs
+final_df <- final_df %>%
+  group_by(patientunitstayid) %>%
+  mutate(num_treatments = ifelse(all(is.na(treatmentstring)), 0, n_distinct(treatmentstring, na.rm = TRUE))) %>%
+  ungroup()
+
+# Crear una columna dicotómica 0 y 1, 0 no se le administra nada, 1 si se le administra
+final_df <- final_df %>%
+  mutate(vasopressors = ifelse(num_treatments == 0, 0, 1))
+```
+
 ##Pivoted_med 
 
 ```{r}
@@ -383,81 +393,15 @@ final_df <- final_df %>%
 ```{r}
 #Orden de las variables
 final_df_order <- final_df %>%
-  select(patientunitstayid, sex,age,ethnicity,er_los_hrs,apacheadmissiondx, apachescoreIV,bact_resist_level, final_charlson_score, hist_diabetes_bin,hist_copd_bin,hist_chf_bin,hist_cancer_bin,hist_renal_bin,hist_other_bin, norepinephrine,epinephrine, dopamine, dobutamine, phenylephrine, vasopressin,  milrinone, heparin, warfarin, unitdischargestatus) #sepsis_bin,infection_bin
+  select(patientunitstayid, sex,age,ethnicity,er_los_hrs,apacheadmissiondx, apachescoreIV,bact_resist_level, final_charlson_score, hist_diabetes_bin,hist_copd_bin,hist_chf_bin,hist_cancer_bin,hist_renal_bin,hist_other_bin, vasopressors, unitdischargestatus) #sepsis_bin,infection_bin
 ```
 
-# Comparación de pacientes con shock y uso de vasopresores
-
-```{r}
-# Calcula el número de vasopresores aplicados por paciente
-final_df_order <- final_df_order %>%
-  mutate(num_vasopresores = rowSums(select(., starts_with("vasopresor_"))))
-
-# Calcula si al menos un vasopresor fue aplicado por paciente
-final_df_order <- final_df_order %>%
-  mutate(num_vasopresores = rowSums(select(., c("norepinephrine", "epinephrine", "dopamine", "dobutamine", "phenylephrine", "vasopressin", "milrinone", "heparin", "warfarin"))))
-
-final_df_order <- final_df_order %>%
-  mutate(num_vasopresores = ifelse(num_vasopresores > 0, 1, 0))
-
-
-# Filtrar DataFrame para incluir solo las filas con unitdischargestatus == 1 y num_vasopresores == 0
-pacientes_muerto <- final_df_order %>%
-  filter(unitdischargestatus == 1 & num_vasopresores == 0)
-
-# Calcular porcentaje
-porcentaje_muerto <- (nrow(pacientes_muerto) / nrow(final_df_order)) * 100
-
-# Mostrar el porcentaje de pacientes que cumplen con los criterios
-print(porcentaje_muerto)
-
-
-
-# Filtrar DataFrame para incluir solo las filas con unitdischargestatus == 1 y num_vasopresores == 0
-pacientes_muerto_ <- final_df_order %>%
-  filter(unitdischargestatus == 1 & num_vasopresores != 0)
-
-# Calcular porcentaje
-porcentaje_muerto_ <- (nrow(pacientes_muerto_) / nrow(final_df_order)) * 100
-
-# Mostrar el porcentaje de pacientes que cumplen con los criterios
-print(porcentaje_muerto_)
-
-
-
-
-
-
-
-# Filtrar DataFrame para incluir solo las filas con unitdischargestatus == 1 y num_vasopresores == 0
-pacientes_vivo <- final_df_order %>%
-  filter(unitdischargestatus == 0 & num_vasopresores == 0)
-
-# Calcular porcentaje
-porcentaje_vivo <- (nrow(pacientes_vivo) / nrow(final_df_order)) * 100
-
-# Mostrar el porcentaje de pacientes que cumplen con los criterios
-print(porcentaje_vivo)
-
-
-
-# Filtrar DataFrame para incluir solo las filas con unitdischargestatus == 1 y num_vasopresores == 0
-pacientes_vivo_ <- final_df_order %>%
-  filter(unitdischargestatus == 0 & num_vasopresores != 0)
-
-# Calcular porcentaje
-porcentaje_vivo_ <- (nrow(pacientes_vivo_) / nrow(final_df_order)) * 100
-
-# Mostrar el porcentaje de pacientes que cumplen con los criterios
-print(porcentaje_vivo_)
-
-```
 
 # Final df
 
 ```{r}
 final_df_er_sepsis <- final_df_order %>%
-  select(unitdischargestatus,er_los_hrs, sex, age, ethnicity, apachescoreIV,  final_charlson_score, hist_diabetes_bin, hist_renal_bin, hist_cancer_bin, hist_chf_bin, hist_copd_bin,hist_other_bin,apacheadmissiondx,bact_resist_level,treatmentstring, treatmentoffset)
+  select(unitdischargestatus,er_los_hrs, sex, age, ethnicity, apachescoreIV,  final_charlson_score, hist_diabetes_bin, hist_renal_bin, hist_cancer_bin, hist_chf_bin, hist_copd_bin,hist_other_bin,apacheadmissiondx,bact_resist_level,vasopressors)
 
 final_df_er_sepsis <- distinct(final_df_er_sepsis)
 ```
@@ -555,34 +499,16 @@ print(chi_sq_test)
 
 ```
 
-
+# Análisis de subgrupos shock séptico (vasopresores)
 
 ```{r}
-# Carga de las librerías necesarias
-library(ggplot2)
-
-library(dplyr)
-
-# Agrupar los datos por intervalos de 5 horas
-final_df_er_sepsis <- final_df_er_sepsis %>%
-  mutate(er_los_hrs_group = cut(er_los_hrs, breaks = seq(0, max(er_los_hrs), by = 5), include.lowest = TRUE))
-
-# Calcular el recuento de pacientes que mueren en cada intervalo
-recuento_muertes <- final_df_er_sepsis %>%
-  filter(unitdischargestatus == 1) %>%
-  group_by(er_los_hrs_group) %>%
-  summarise(muertes = n(), unitdischargestatus = 1)  # Agregar unitdischargestatus
-
-# Gráfico de dispersión con ggplot2
-ggplot(final_df_er_sepsis, aes(x = er_los_hrs, color = factor(unitdischargestatus))) +
-  geom_density() +
-  geom_text(data = recuento_muertes, aes(x = as.numeric(er_los_hrs_group), y = 0, label = muertes),hjust = 1, vjust = -1, size = 3) +
-  labs(x = "Tiempo en UCI (horas)", y = "Mortality (N=13.131)") +
-  scale_color_manual(values = c("blue", "red"), labels = c("Vive", "Muere")) +
-  theme_minimal()
-
-
-
+final_shock_séptico <- final_df_er_sepsis %>%
+  select(unitdischargestatus, er_los_hrs, sex, age, ethnicity, apachescoreIV, final_charlson_score, 
+         hist_diabetes_bin, hist_renal_bin, hist_cancer_bin, hist_chf_bin, hist_copd_bin, hist_other_bin,
+         apacheadmissiondx, bact_resist_level, vasopressors) %>%
+  filter(vasopressors == 1)
 ```
+
+
 
 

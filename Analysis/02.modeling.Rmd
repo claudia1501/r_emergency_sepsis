@@ -227,12 +227,12 @@ print(matriz_confusion_seleccion)
 ```{r}
 #JUSTIFICACIÓN DE LA NO LINEALIDAD. Nos fijamos en la significación y en el Estimated degrees of freedom >1. Se utiliza para evaluar si la relación entre la variable de respuesta (unitdischargestatus: vivo o muerto) y la variable explicativa (er_los_hrs: tiempo en urgencias) es esencialmente lineal o si hay evidencias de no linealidad que podría ser capturada por la inclusión de términos suavizados
 
-linear_model <- gam(unitdischargestatus ~ er_los_hrs + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + apacheadmissiondx + bact_resist_level +  norepinephrine + epinephrine + dopamine + dobutamine + phenylephrine + vasopressin + milrinone + heparin + warfarin, data = final_df_order,
+linear_model <- gam(unitdischargestatus ~ er_los_hrs + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + apacheadmissiondx + bact_resist_level +  vasopressors, data = final_shock_séptico,
     family = binomial)
 
 gam_mortality_unit <- 
   gam(
-    unitdischargestatus ~ s(er_los_hrs, k=3) + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + apacheadmissiondx + norepinephrine + epinephrine + dopamine + dobutamine + phenylephrine + vasopressin + milrinone + heparin + warfarin, data = final_df_order,
+    unitdischargestatus ~ s(er_los_hrs, k=3) + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + apacheadmissiondx + vasopressors, data = final_shock_séptico,
     family = binomial)  #bact_resist_level    
 
 anova(linear_model, gam_mortality_unit, test = "Chisq")
@@ -307,7 +307,7 @@ or_table_gam <- or_icudeath_gam2 %>%
     OR_upper = ifelse(OR_upper <= 100, sprintf("%.2f", OR_upper), sprintf("%.2f", OR_upper))
   ) %>%
   arrange(desc(term)) %>%
-  kbl(caption = "Logistic Regression. Odds Ratio and Confidence Intervals for ICU Mortality-associated Factors. eICU Database", align = "c") %>%
+  kbl(caption = "GAM model. Odds Ratio and Confidence Intervals for ICU Mortality-associated Factors. eICU Database", align = "c") %>%
   kable_classic_2(full_width = F, html_font = "Cambria")
 
 write.csv(or_table_gam, "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/or_icudeath_gam2_eicu.csv")
@@ -321,14 +321,14 @@ ggplot(or_icudeath_gam2,
   geom_point(size = 2, aes(color = adverse_protective_gam)) +
   geom_errorbarh(height = 0.2, aes(color = adverse_protective_gam)) +
   geom_vline(xintercept = 1, linetype = "dashed") +
-  labs(x = "Odds Ratio", y = NULL, title = "Logistic Regression. Odds Ratio and Confidence Intervals\nfor Hospital Mortality-associated Factors. eICU Database") +
+  labs(x = "Odds Ratio", y = NULL, title = "GAM model. Odds Ratio and Confidence Intervals\nfor Hospital Mortality-associated Factors. eICU Database") +
   theme_minimal() +
   scale_color_manual(
     values = c("#c0392b", "#27ae60", "gray70"),
     labels = c("Adverse", "Protective", "Inconclusive"),
     name = "Effect on Outcome",
     limits = adverse_protective_levels_gam$adverse_protective_gam) + #establishes limits of color scale
-  scale_x_continuous(limits = c(0.5, 7)) +
+  scale_x_continuous(limits = c(0.5, 2)) +
   theme(
     plot.background = element_rect(fill = "white"),
     panel.grid.major.y = element_blank(),
@@ -341,70 +341,7 @@ ggplot(or_icudeath_gam2,
     ))
 ```
 
-```{r}
-# Librerías necesarias
-library(dplyr)
-library(ggplot2)
-library(kableExtra)
 
-# Resultados del modelo proporcionados como data frame
-model_results <- data.frame(
-  term = c("(Intercept)", "sexM", "age", "ethnicityCaucasian", "ethnicityHispanic", "ethnicityother/unknown",
-           "apachescoreIV", "final_charlson_score", "hist_diabetes_bin", "hist_renal_bin", "hist_cancer_bin",
-           "hist_chf_bin", "hist_copd_bin", "hist_other_bin", "apacheadmissiondxSepsis, GI", 
-           "apacheadmissiondxsepsis, pneumonia", "apacheadmissiondxSepsis, renal/UTI (including bladder)",
-           "apacheadmissiondxSepsis, unknown", "norepinephrine", "epinephrine", "dopamine", "dobutamine",
-           "phenylephrine", "vasopressin", "milrinone", "heparin", "warfarin"),
-  estimate = c(-5.717601, -0.207104, 0.009442, 0.058751, -0.179839, -0.136511, 0.034568, 0.019280, -0.297437, 
-               0.060392, 0.324795, -0.004834, 0.084575, -0.068203, 0.181218, 0.133671, -0.398769, 0.169294, 
-               0.218423, 1.287039, 0.311575, -0.394021, 0.583343, 1.012215, 0.040317, -0.245097, -0.395094),
-  std_error = c(0.261879, 0.076010, 0.003300, 0.131979, 0.222496, 0.192515, 0.001458, 0.023585, 0.091903, 
-                0.115482, 0.119191, 0.104924, 0.100400, 0.116497, 0.149677, 0.101937, 0.131174, 0.140022, 
-                0.094240, 0.221338, 0.253112, 0.343051, 0.151668, 0.136687, 0.941788, 0.091389, 0.240225),
-  p_value = c("< 2e-16", "0.00644", "0.00422", "0.65621", "0.41893", "0.47827", "< 2e-16", "0.41367", "0.00121",
-              "0.60100", "0.00643", "0.96326", "0.39958", "0.55825", "0.22600", "0.18975", "0.00237", "0.22664",
-              "0.02046", "6.07e-09", "0.21833", "0.25073", "0.00012", "1.31e-13", "0.96585", "0.00732", "0.10004")
-)
-
-# Calcular los Odds Ratios y los Intervalos de Confianza
-model_results <- model_results %>%
-  mutate(
-    OR = exp(estimate),
-    OR_lower = exp(estimate - 1.96 * std_error),
-    OR_upper = exp(estimate + 1.96 * std_error),
-    color = case_when(
-      OR_lower > 1 ~ "Adverse",
-      OR_upper < 1 ~ "Protective",
-      TRUE ~ "Inconclusive"
-    )
-  )
-
-# Selección de columnas relevantes
-or_icudeath_gam <- model_results %>%
-  select(term, estimate, std_error, OR, OR_lower, OR_upper, p_value, color)
-
-# Imprimir los resultados
-print(or_icudeath_gam)
-
-# Crear el Forest Plot con colores
-ggplot(or_icudeath_gam %>% filter(term != "(Intercept)"), 
-       aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = reorder(term, OR), color = color)) +
-  geom_point(size = 3) +
-  geom_errorbarh(height = 0.2) +
-  geom_vline(xintercept = 1, linetype = "dashed") +
-  scale_color_manual(values = c("Adverse" = "red", "Protective" = "green", "Inconclusive" = "grey")) +
-  labs(x = "Odds Ratio", y = NULL, color = "Effect", 
-       title = "Forest Plot: Odds Ratios and 95% CI for ICU Mortality-associated Factors") +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(hjust = 0.5),
-    axis.text.y = element_text(size = 10),
-    axis.title.x = element_text(size = 12),
-    panel.grid.minor = element_blank()
-  )
-
-
-```
 
 
 ## GAM plot
@@ -469,7 +406,7 @@ ggplot(df_er_los_hrs_mortality, mapping = aes(x = x, y = fit_chance)) +
 ```{r}
 predicciones <- predict(gam_mortality_unit, type = "response")
 clases_predichas <- ifelse(predicciones > 0.5,1,0)
-matriz_confusion <- table( Actual = final_df_order$unitdischargestatu, predicha = clases_predichas)
+matriz_confusion <- table( Actual = final_df_er_sepsis$unitdischargestatus, predicha = clases_predichas)
 precission <- (matriz_confusion[2, 2] + matriz_confusion[1, 1]) / sum(matriz_confusion)
 recall <- matriz_confusion[2, 2] / sum(matriz_confusion[2, ])
 f1_score <- 2 * (precission * recall) / (precission + recall)
@@ -486,43 +423,7 @@ print(exactitud)
 print(matriz_confusion)
 ```
 
-# Modelo de bosque aleatorio
 
-```{r}
-final_df_er_sepsis$unitdischargestatus <- as.factor(final_df_er_sepsis$unitdischargestatus)
-
-mdoelforest <- randomForest(
-  unitdischargestatus ~ er_los_hrs + sex + age + ethnicity + apachescoreIV +  
-  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + 
-  hist_chf_bin + hist_copd_bin + hist_other_bin + unittype + 
-  apacheadmissiondx + bact_resist_level, 
-  data = final_df_er_sepsis, 
-  ntree = 500
-)
-
-
-probas <- predict(mdoelforest, type = "response")$probabilities[, 2]
-
-
-n <- length(probas)
-z <- qnorm(0,975)
-margin_of_error <- z * sqrt(probas * (1 - probas) / n)
-
-lower_bound <- pmax(0, probas - margin_of_error)
-upper_bound <- pmin(1, probas + margin_of_error)
-
-# Crear un data frame con los resultados
-results <- data.frame(X = X, probas = probas, lower_bound = lower_bound, upper_bound = upper_bound)
-
-# Graficar
-ggplot(results, aes(x = X, y = probas)) +
-  geom_point(color = "blue") +
-  geom_line(aes(y = probas), color = "red") +
-  geom_ribbon(aes(ymin = lower_bound, ymax = upper_bound), fill = "gray", alpha = 0.3) +
-  labs(x = "Número de horas en urgencias", y = "Probabilidad de mortalidad", title = "Relación entre mortalidad y tiempo en urgencias") +
-  theme_minimal()
-
-```
 
 
 
