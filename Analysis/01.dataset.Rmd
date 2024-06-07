@@ -128,7 +128,7 @@ final_df <- final_df %>%
 
 # Quitar valores muy altos considerados outcome
 final_df <- final_df %>%
-  filter(er_los_hrs <= 8)
+  filter(er_los_hrs <= 24)
 
 print('Patients in emergency department during 24 hrs')
 c <- nrow(final_df)
@@ -229,7 +229,7 @@ final_df <- final_df %>%
   mutate(
     apacheadmissiondx = recode(
       apacheadmissiondx,
-      "Sepsis, cutaneous/soft tissue" = "Other",
+      #"Sepsis, cutaneous/soft tissue" = "Other",
       "Pneumonia, other" = "Other",
       "Pneumonia, aspiration" = "Other",
       "Renal infection/abscess" = "Other",
@@ -304,6 +304,9 @@ final_df <- final_df %>%
   mutate(
     bact_resist_level = replace_na(final_df$bact_resist_level, 'Not infection')
   )
+
+final_df <- final_df %>%
+  mutate(bact_resist_level = recode(bact_resist_level, "No infection" = "Not infection"))
 ```
 
 ### History.dx. 
@@ -507,6 +510,7 @@ final_shock_séptico <- final_df_er_sepsis %>%
          hist_diabetes_bin, hist_renal_bin, hist_cancer_bin, hist_chf_bin, hist_copd_bin, hist_other_bin,
          apacheadmissiondx, bact_resist_level, vasopressors) %>%
   filter(vasopressors == 1)
+final_df_er_sepsis <- distinct(final_shock_séptico)
 ```
 
 

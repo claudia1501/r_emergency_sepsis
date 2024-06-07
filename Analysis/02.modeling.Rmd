@@ -32,6 +32,7 @@ library(parglm)
 library(stargazer)
 library(patchwork)
 library(randomForest)
+library(car)
 ```
 
 # Load Data
@@ -49,7 +50,7 @@ print('Logistic Regression of hospital mortality')
 
 ## Ajuste del modelo de regresión logística
 logreg_icudeath <- glm(
-   unitdischargestatus ~ er_los_hrs + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + apacheadmissiondx + bact_resist_level + num_vasopresores, data = final_df_er_sepsis,
+   unitdischargestatus ~ er_los_hrs + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + apacheadmissiondx + bact_resist_level + vasopressors, data = final_df_er_sepsis,
     family = binomial(link = "logit"))
 ```
 
@@ -227,12 +228,12 @@ print(matriz_confusion_seleccion)
 ```{r}
 #JUSTIFICACIÓN DE LA NO LINEALIDAD. Nos fijamos en la significación y en el Estimated degrees of freedom >1. Se utiliza para evaluar si la relación entre la variable de respuesta (unitdischargestatus: vivo o muerto) y la variable explicativa (er_los_hrs: tiempo en urgencias) es esencialmente lineal o si hay evidencias de no linealidad que podría ser capturada por la inclusión de términos suavizados
 
-linear_model <- gam(unitdischargestatus ~ er_los_hrs + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + apacheadmissiondx + bact_resist_level +  vasopressors, data = final_shock_séptico,
+linear_model <- gam(unitdischargestatus ~ er_los_hrs + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + apacheadmissiondx + bact_resist_level +  vasopressors, data = final_df_er_sepsis,
     family = binomial)
 
 gam_mortality_unit <- 
   gam(
-    unitdischargestatus ~ s(er_los_hrs, k=3) + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + apacheadmissiondx + vasopressors, data = final_shock_séptico,
+    unitdischargestatus ~ s(er_los_hrs, k=3) + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + apacheadmissiondx + vasopressors, data = final_df_er_sepsis,
     family = binomial)  #bact_resist_level    
 
 anova(linear_model, gam_mortality_unit, test = "Chisq")
@@ -328,7 +329,7 @@ ggplot(or_icudeath_gam2,
     labels = c("Adverse", "Protective", "Inconclusive"),
     name = "Effect on Outcome",
     limits = adverse_protective_levels_gam$adverse_protective_gam) + #establishes limits of color scale
-  scale_x_continuous(limits = c(0.5, 2)) +
+  scale_x_continuous(limits = c(0.5, 3)) +
   theme(
     plot.background = element_rect(fill = "white"),
     panel.grid.major.y = element_blank(),
