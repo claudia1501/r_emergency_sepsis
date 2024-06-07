@@ -14,6 +14,7 @@ WHERE
   OR treatmentstring LIKE 'cardiovascular|shock|vasopressors|dopamine  5-15 micrograms/kg/min' 
   OR treatmentstring LIKE 'cardiovascular|shock|vasopressors|dopamine >15 micrograms/kg/min' 
   OR treatmentstring LIKE 'cardiovascular|shock|vasopressors'
+  OR treatmentstring LIKE 'cardiovascular|shock|vasopressors' 'toxicology|drug overdose|agent specific therapy|beta blockers overdose|dopamine'
 
   GROUP BY 
     patientunitstayid,treatmentstring
