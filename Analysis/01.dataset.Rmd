@@ -81,7 +81,6 @@ sensitivitylevel <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_
 charlson_score <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/charlson_score.sql"))
 history_dx <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/history_dx.sql"))
 pivoted_med <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/pivoted_med.sql"))
-shock <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/shock.sql"))
 shock_vassop <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/shock_vassop.sql"))
 ```
 
@@ -374,21 +373,6 @@ final_df <- final_df %>%
 # Crear una columna dicotómica 0 y 1, 0 no se le administra nada, 1 si se le administra
 final_df <- final_df %>%
   mutate(vasopressors = ifelse(num_treatments == 0, 0, 1))
-```
-
-##Pivoted_med 
-
-```{r}
-final_df <- final_df %>%
-  mutate(norepinephrine = replace_na(norepinephrine, 0)) %>%
-  mutate(epinephrine = replace_na(epinephrine, 0)) %>%
-  mutate(dopamine = replace_na(dopamine, 0)) %>%
-  mutate(dobutamine = replace_na(dobutamine, 0)) %>%
-  mutate(phenylephrine = replace_na(phenylephrine, 0)) %>%
-  mutate(vasopressin = replace_na(vasopressin, 0)) %>%
-  mutate(milrinone = replace_na(milrinone, 0)) %>%
-  mutate(heparin = replace_na(heparin, 0)) %>%
-  mutate(warfarin = replace_na(warfarin, 0))
 ```
 
 # Df order 

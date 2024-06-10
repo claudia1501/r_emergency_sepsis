@@ -33,6 +33,9 @@ library(stargazer)
 library(patchwork)
 library(randomForest)
 library(car)
+library(MuMIn)
+library(corrplot)
+
 ```
 
 # Load Data
@@ -250,6 +253,17 @@ plot(gam_mortality_unit, seWithMean = TRUE,shift = coef(gam_mortality_unit)[1], 
 #La variable “s(er_los_hrs:1.8)” parece ser una transformación suavizada de “er_los_hrs” que se utiliza en el modelo binomial con función de enlace logit para predecir la variable “unitdischargestatus” en función de varias variables independientes, incluyendo “sex”, “age”, “ethnicity”, “apachescoreIV”, “final_charlson_score”, “hist_diabetes_bin”, “hist_renal_bin”, “hist_cancer_bin”, “hist_chf_bin”, “hist_copd_bin”, “hist_other_bin”, “unittype” y “apacheadmissiondx”. La escala del eje Y, que va desde -0.4 a 0.2, representa los valores transformados suavizados del tiempo pasado en la sala de emergencias.
 
 #La transformación suavizada se realiza mediante una función de suavizado que se ajusta a los datos de “er_los_hrs” y produce una curva suave que se ajusta a los datos. La función de suavizado utilizada en este caso parece tener 1.8 grados de libertad. La escala del eje Y se establece en función de los valores transformados suavizados de “er_los_hrs” y no de los valores originales de “er_los_hrs”.
+
+
+# Matriz de correlación (solo variables numéricas)
+correlation_matrix <- cor(final_df_er_sepsis %>% select(unitdischargestatus, age, er_los_hrs, apachescoreIV, final_charlson_score))
+corrplot::corrplot(correlation_matrix, method = "circle")
+
+# Calcular el VIF para cada variable (X)
+numeric_vars <- final_df_er_sepsis %>% select(unitdischargestatus, age, er_los_hrs, apachescoreIV, final_charlson_score)
+vif_data <- vif(lm(unitdischargestatus ~ ., data = numeric_vars))
+print(vif_data)
+
 ```
 
 
