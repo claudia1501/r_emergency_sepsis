@@ -10,6 +10,8 @@ library(kableExtra)
 library(knitr)
 library(janitor)
 library(Hmisc)
+install.packages("htmltools")
+
 ```
 
 #Table one 1º
@@ -17,7 +19,7 @@ library(Hmisc)
 final_df_er_sepsis <- read.csv("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/selected_data.csv")
 message("Datos cargados correctamente")
 #Lista de variables incluidas en la table 1
-vars_in_table1 <- names(final_df_er_sepsis %>% select( unitdischargestatus, er_los_hrs, sex , age , ethnicity , apachescoreIV ,  final_charlson_score , hist_diabetes_bin , hist_renal_bin , hist_cancer_bin , hist_chf_bin , hist_copd_bin , hist_other_bin , apacheadmissiondx,bact_resist_level,vasopressors))
+vars_in_table1 <- names(final_df_er_sepsis %>% select( unitdischargestatus, er_los_hrs, sex , age , ethnicity , apachescoreIV ,  final_charlson_score , hist_diabetes_bin , hist_renal_bin , hist_cancer_bin , hist_chf_bin , hist_copd_bin , hist_other_bin , vasopressors))
 
 ```
 

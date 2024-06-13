@@ -226,7 +226,7 @@ top_categories <- c("sepsis, pneumonia",
 # Crear una nueva variable "apacheadmissiondx_recoded" que recodifique las categorías no incluidas en el ranking como "Other"
 final_df <- final_df %>%
   mutate(
-    apacheadmissiondx = recode(
+    apacheadmissiondx = dplyr::recode(
       apacheadmissiondx,
       #"Sepsis, cutaneous/soft tissue" = "Other",
       "Pneumonia, other" = "Other",
@@ -305,7 +305,7 @@ final_df <- final_df %>%
   )
 
 final_df <- final_df %>%
-  mutate(bact_resist_level = recode(bact_resist_level, "No infection" = "Not infection"))
+  mutate(bact_resist_level = dplyr::recode(bact_resist_level, "No infection" = "Not infection"))
 ```
 
 ### History.dx. 
@@ -380,7 +380,7 @@ final_df <- final_df %>%
 ```{r}
 #Orden de las variables
 final_df_order <- final_df %>%
-  select(patientunitstayid, sex,age,ethnicity,er_los_hrs,apacheadmissiondx, apachescoreIV,bact_resist_level, final_charlson_score, hist_diabetes_bin,hist_copd_bin,hist_chf_bin,hist_cancer_bin,hist_renal_bin,hist_other_bin, vasopressors, unitdischargestatus) #sepsis_bin,infection_bin
+  select(patientunitstayid, sex,age,ethnicity,er_los_hrs,apacheadmissiondx, apachescoreIV, final_charlson_score, hist_diabetes_bin,hist_copd_bin,hist_chf_bin,hist_cancer_bin,hist_renal_bin,hist_other_bin, vasopressors, unitdischargestatus) #sepsis_bin,infection_bin
 ```
 
 
@@ -388,7 +388,7 @@ final_df_order <- final_df %>%
 
 ```{r}
 final_df_er_sepsis <- final_df_order %>%
-  select(unitdischargestatus,er_los_hrs, sex, age, ethnicity, apachescoreIV,  final_charlson_score, hist_diabetes_bin, hist_renal_bin, hist_cancer_bin, hist_chf_bin, hist_copd_bin,hist_other_bin,apacheadmissiondx,bact_resist_level,vasopressors)
+  select(unitdischargestatus,er_los_hrs, sex, age, ethnicity, apachescoreIV,  final_charlson_score, hist_diabetes_bin, hist_renal_bin, hist_cancer_bin, hist_chf_bin, hist_copd_bin,hist_other_bin,apacheadmissiondx, vasopressors)
 
 final_df_er_sepsis <- distinct(final_df_er_sepsis)
 ```

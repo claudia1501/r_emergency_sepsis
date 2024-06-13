@@ -527,3 +527,395 @@ ggplot(df_train, mapping = aes(x = x, y = fit_chance)) +
   ) +
   theme_minimal()
 ```
+
+#PRIMER GAM
+
+## FÓRMULA GAM
+
+```{r}
+#JUSTIFICACIÓN DE LA NO LINEALIDAD. Nos fijamos en la significación y en el Estimated degrees of freedom >1. Se utiliza para evaluar si la relación entre la variable de respuesta (unitdischargestatus: vivo o muerto) y la variable explicativa (er_los_hrs: tiempo en urgencias) es esencialmente lineal o si hay evidencias de no linealidad que podría ser capturada por la inclusión de términos suavizados
+
+linear_model <- gam(unitdischargestatus ~ sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin+ apacheadmissiondx  + vasopressors, data = final_df_er_sepsis,
+    family = binomial)
+
+gam_mortality_unit <- 
+  gam(
+    unitdischargestatus ~ s(er_los_hrs, bs="bs") + s(age, k=3) + sex + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin+ apacheadmissiondx + bact_resist_level + vasopressors , data = final_df_er_sepsis,
+    family = binomial)   
+
+anova(linear_model, prueba_gam, test = "Chisq")
+
+print(prueba_gam)
+plot(gam_mortality_unit, rug = TRUE, shade = TRUE, shade.col = "lightblue")
+
+plot(gam_mortality_unit, seWithMean = TRUE,shift = coef(gam_mortality_unit)[1], rug = TRUE, shade = TRUE, shade.col = "lightblue")
+
+# seWithMean:A menudo es útil representar los errores estándar de un término de efecto parcial combinados con los errores estándar de la intersección del modelo. Esto se debe a que los intervalos de confianza en el valor medio de una variable pueden ser muy pequeños y no reflejan la incertidumbre general en nuestro modelo. El uso del argumento seWithMean añade esta incertidumbre.
+
+# shift = coef(gam_mortality_unit)[1]: Para que los gráficos sean aún más interpretables, es útil cambiar la escala para que se incluya la intersección. Usando el argumento shift, podemos cambiar la escala por el valor de la intersección, que es el primer coeficiente del modelo. Observe cómo ha cambiado el eje Y. Ahora, el gráfico de efecto parcial tiene una interpretación más natural: nos muestra la predicción de la salida, asumiendo que otras variables están en su valor promedio.
+
+#La variable “s(er_los_hrs:1.8)” parece ser una transformación suavizada de “er_los_hrs” que se utiliza en el modelo binomial con función de enlace logit para predecir la variable “unitdischargestatus” en función de varias variables independientes, incluyendo “sex”, “age”, “ethnicity”, “apachescoreIV”, “final_charlson_score”, “hist_diabetes_bin”, “hist_renal_bin”, “hist_cancer_bin”, “hist_chf_bin”, “hist_copd_bin”, “hist_other_bin”, “unittype” y “apacheadmissiondx”. La escala del eje Y, que va desde -0.4 a 0.2, representa los valores transformados suavizados del tiempo pasado en la sala de emergencias.
+
+#La transformación suavizada se realiza mediante una función de suavizado que se ajusta a los datos de “er_los_hrs” y produce una curva suave que se ajusta a los datos. La función de suavizado utilizada en este caso parece tener 1.8 grados de libertad. La escala del eje Y se establece en función de los valores transformados suavizados de “er_los_hrs” y no de los valores originales de “er_los_hrs”.
+
+```
+
+
+## Odds Ratio and forest plot df total
+The model's coefficients, odds ratios, and corresponding confidence intervals were then extracted to generate a forest plot, offering a concise visual representation of the estimated odds ratios and their precision intervals for each predictor variable. The GAM approach provides a robust framework to explore the complex relationships between multiple predictors and a binary health outcome, facilitating a comprehensive analysis in the field of public health research.
+
+```{r}
+## Extracción de Odds Ratio (OR)
+or_icudeath_gam <- extract_coef_pval_OR(gam_mortality_unit)
+
+## Ordenación de variables y asignación de nombres adecuados
+variables_order <- rev(c(
+  "Intercept", "Tiempo de ingreso en UCI (horas)", "Sex (Male)", "Age (years)", "Ethnicity", "ApachescoreIV", "Final Charlson Score", "Diabetes History", "Renal History", "Cancer History", "CHF History", "COPD History", "Other History"
+))
+
+or_icudeath_gam2 <- or_icudeath_gam %>%
+  mutate(
+    term = case_when(
+      term == "(Intercept)" ~ "Intercept",
+      term == "er_los_hrs" ~ "Tiempo de ingreso en UCI (horas)",
+      term == "sex" ~ "Sex (Male)",
+      term == "age" ~ "Age (years)",
+      term == "ethnicity" ~ "Ethnicity",
+      term == "apachescoreIV" ~ "ApachescoreIV",
+      term == "final_charlson_score" ~ "Final Charlson Score",
+      term == "hist_diabetes_bin" ~ "Diabetes History",
+      term == "hist_renal_bin" ~ "Renal History",
+      term == "hist_cancer_bin" ~ "Cancer History",
+      term == "hist_chf_bin" ~ "CHF History",
+      term == "hist_copd_bin" ~ "COPD History",
+      term == "hist_other_bin" ~ "Other History",
+      #term == "apacheadmissiondx" ~ "Apacheadmissiondx",
+      #term == "bact_resist_level" ~ "Bact resist level",
+      TRUE ~ as.character(term)
+    ),
+    adverse_protective_gam = case_when(
+      OR_lower > 1 & OR_upper > 1 ~ "Adverse",
+      OR_lower < 1 & OR_upper < 1 ~ "Protective",
+      OR_lower <= 1 & OR_upper >= 1 ~ "Inconclusive"
+    ),
+    adverse_protective_gam = factor(adverse_protective_gam, levels = c("Adverse", "Protective", "Inconclusive"))
+  ) %>%
+  filter(term != "Intercept")  # Filtrar si es necesario
+
+
+## Escritura de resultados en CSV
+#write.csv(or_icudeath_2, "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/or_icudeath_2.csv")
+
+## Impresión de resultados en formato HTML y exportación de una tabla kable
+#htmlTable(or_icudeath_2[,c("term", "OR", "OR_lower", "OR_upper")], caption = "Logistic Regression. Odds Ratio and Confidence Intervals for ICU Mortality-associated Factors. eICU Database")
+
+or_table_gam <- or_icudeath_gam2 %>%
+  select(term, OR, OR_lower, OR_upper) %>%
+  mutate(
+    term = factor(term, levels = variables_order),
+    OR_upper = ifelse(OR_upper <= 100, sprintf("%.2f", OR_upper), sprintf("%.2f", OR_upper))
+  ) %>%
+  arrange(desc(term)) %>%
+  kbl(caption = "GAM model. Odds Ratio and Confidence Intervals for ICU Mortality-associated Factors. eICU Database", align = "c") %>%
+  kable_classic_2(full_width = F, html_font = "Cambria")
+
+write.csv(or_table_gam, "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/or_icudeath_gam2_eicu.csv")
+
+## Create a data frame with all possible levels for adverse-protective-inconclusive variable
+adverse_protective_levels_gam <- data.frame(adverse_protective = c("Adverse", "Protective", "Inconclusive"))
+
+# Build the Forest plot
+ggplot(or_icudeath_gam2, 
+       aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = term)) +
+  geom_point(size = 2, aes(color = adverse_protective_gam)) +
+  geom_errorbarh(height = 0.2, aes(color = adverse_protective_gam)) +
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  labs(x = "Odds Ratio", y = NULL, title = "GAM model. Odds Ratio and Confidence Intervals\nfor Hospital Mortality-associated Factors. eICU Database") +
+  theme_minimal() +
+  scale_color_manual(
+    values = c("#c0392b", "#27ae60", "gray70"),
+    labels = c("Adverse", "Protective", "Inconclusive"),
+    name = "Effect on Outcome",
+    limits = adverse_protective_levels_gam$adverse_protective_gam) + #establishes limits of color scale
+  scale_x_continuous(limits = c(0.5, 3)) +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "top",
+    axis.ticks = element_blank(),
+    axis.text.x = element_text(color = "#2c3e50"),
+    axis.text.y = element_text(color = "#2c3e50"
+    ))
+```
+
+## GAM plot
+Explicación gráficas:
+EJE Y
+1º Gráfica (gam_plot_mortality_unit): representa el fit (logaritmo de razón de probabilidad) es la manera en que el modelo GAM representa la relación entre la variable predictora 'er_los_hrs' y la variable respuesta 'mortalidad' (unitdischargestatus). Ofrece resultados directos de la estimación del GAM. INTERPRETACIÓN: Un valor negativo de fit indica una disminución en el logaritmo de la razón de probabilidades, lo que podría asociarse con una disminución en la probabilidad de mortalidad. Un valor positivo indica un aumento en la probabilidad logarítmica de mortalidad.
+2º Grágica (df_er_los_hrs_mortality): representa fit_chance (probabilidad tras la transformación logística).Uso de fórmula sigmoide, valores entre 0 y 1
+
+```{r}
+# Variable er_los_hrs
+gam_plot_mortality_unit <-plot(gam_mortality_unit, rug = TRUE,scale = 0)
+x <- gam_plot_mortality_unit[[1]]$x
+fit <- gam_plot_mortality_unit[[1]]$fit
+se <- gam_plot_mortality_unit[[1]]$se
+
+fit_values <- as.vector(fit)
+se_values <- as.vector(se)
+
+
+# Convert odds ratio to percentage chance of ICU mortality 
+fit_chance <- (exp(fit) / (1 + exp(fit))) 
+lower_bound_chance <- (exp(fit - 2 * se) / (1 + exp(fit - 2 * se))) 
+upper_bound_chance <- (exp(fit + 2 * se) / (1 + exp(fit + 2 * se))) 
+
+
+df_er_los_hrs_mortality <- 
+  data.frame(
+    x = x, y = fit_chance,
+    ymin = lower_bound_chance , ymax = upper_bound_chance
+  )
+
+ggplot(df_er_los_hrs_mortality, mapping = aes(x = x, y = fit_chance)) +
+  geom_ribbon(aes(ymin = lower_bound_chance, ymax = upper_bound_chance), alpha = 0.3) +
+  geom_line(color = "blue") +  # Añade la línea de ajuste
+  labs(
+    x = "Emergency Room Length of Stay (hours)", 
+    y = "Mortality in the ICU probability (%)", 
+    title = "Generative Additive Modeling"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "italic"),
+    panel.border = element_rect(color = "black", fill = NA, size = 0.6),
+    legend.position = "none"
+  ) +
+  ylim(0.2, 1)
+
+ggplot(df_er_los_hrs_mortality, mapping = aes(x = x, y = fit_chance)) +
+  stat_smooth(method = gam, formula = y ~ s(x)) +
+  geom_ribbon(aes(ymin = lower_bound_chance, ymax = upper_bound_chance), alpha = 0.3) +
+   labs(
+    x = "Emergency Room Length of Stay (hours)", 
+    y = "Mortality in the ICU probability (%)", 
+    title = "Generative Additive Modeling"
+  ) +
+  theme_minimal()
+
+final_df_er_sepsis %>%
+  ggplot(aes(x = er_los_hrs, y = unitdischargestatus)) +
+  geom_point() +
+  geom_smooth(
+    method = "glm", method.args = list(family = "binomial"), 
+    color = "dodgerblue", lty = 2, se = FALSE
+  )
+```
+
+## Pruebas de rendimiento del modelo GAM
+
+```{r}
+predicciones <- predict(gam_mortality_unit, type = "response")
+clases_predichas <- ifelse(predicciones > 0.5,1,0)
+matriz_confusion <- table( Actual = final_df_er_sepsis$unitdischargestatus, predicha = clases_predichas)
+precission <- (matriz_confusion[2, 2] + matriz_confusion[1, 1]) / sum(matriz_confusion)
+recall <- matriz_confusion[2, 2] / sum(matriz_confusion[2, ])
+f1_score <- 2 * (precission * recall) / (precission + recall)
+
+especificidad <- matriz_confusion[1, 1] / sum(matriz_confusion[1, ])
+exactitud <- (matriz_confusion[1, 1] + matriz_confusion[2, 2]) / sum(matriz_confusion)
+
+
+print(precission)
+print(recall)
+print(f1_score)
+print(especificidad)
+print(exactitud)
+print(matriz_confusion)
+```
+
+# GLM VERDADERO
+
+```{r}
+## Imprime el título y hora actual
+print('Logistic Regression of hospital mortality')
+
+## Ajuste del modelo de regresión logística
+logreg_icudeath <- glm(
+   unitdischargestatus ~ er_los_hrs + sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + apacheadmissiondx + bact_resist_level + vasopressors, data = final_df_er_sepsis,
+    family = binomial(link = "logit"))
+```
+
+##Odds ratio and forest plot
+
+```{r}
+## Extracción de Odds Ratio (OR)
+or_icudeath_1 <- extract_coef_pval_OR(logreg_icudeath)
+
+## Ordenación de variables y asignación de nombres adecuados
+variables_order <- rev(c(
+  "Intercept", "Tiempo de ingreso en UCI (horas)", "Sex (Male)", "Age (years)", "Ethnicity", "ApachescoreIV", "Final Charlson Score", "Diabetes History", "Renal History", "Cancer History", "CHF History", "COPD History", "Other History", "Apacheadmissiondx","Bact resist level"
+))
+
+or_icudeath_2 <- or_icudeath_1 %>%
+  mutate(
+    term = case_when(
+      term == "(Intercept)" ~ "Intercept",
+      term == "er_los_hrs" ~ "Tiempo de ingreso en UCI (horas)",
+      term == "sex" ~ "Sex (Male)",
+      term == "age" ~ "Age (years)",
+      term == "ethnicity" ~ "Ethnicity",
+      term == "apachescoreIV" ~ "ApachescoreIV",
+      term == "final_charlson_score" ~ "Final Charlson Score",
+      term == "hist_diabetes_bin" ~ "Diabetes History",
+      term == "hist_renal_bin" ~ "Renal History",
+      term == "hist_cancer_bin" ~ "Cancer History",
+      term == "hist_chf_bin" ~ "CHF History",
+      term == "hist_copd_bin" ~ "COPD History",
+      term == "hist_other_bin" ~ "Other History",
+      term == "apacheadmissiondx" ~ "Apacheadmissiondx",
+      term == "bact_resist_level" ~ "Bact resist level",
+      TRUE ~ as.character(term)
+    ),
+    adverse_protective_glm = case_when(
+      OR_lower > 1 & OR_upper > 1 ~ "Adverse",
+      OR_lower < 1 & OR_upper < 1 ~ "Protective",
+      OR_lower <= 1 & OR_upper >= 1 ~ "Inconclusive"
+    ),
+    adverse_protective_glm = factor(adverse_protective_glm, levels = c("Adverse", "Protective", "Inconclusive"))
+  ) %>%
+  filter(term != "Intercept")  # Filtrar si es necesario
+
+
+## Escritura de resultados en CSV
+#write.csv(or_icudeath_2, "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/or_icudeath_2.csv")
+
+## Impresión de resultados en formato HTML y exportación de una tabla kable
+#htmlTable(or_icudeath_2[,c("term", "OR", "OR_lower", "OR_upper")], caption = "Logistic Regression. Odds Ratio and Confidence Intervals for ICU Mortality-associated Factors. eICU Database")
+
+or_table_glm <- or_icudeath_2 %>%
+  select(term, OR, OR_lower, OR_upper) %>%
+  mutate(
+    term = factor(term, levels = variables_order),
+    OR_upper = ifelse(OR_upper <= 100, sprintf("%.2f", OR_upper), sprintf("%.2f", OR_upper))
+  ) %>%
+  arrange(desc(term)) %>%
+  kbl(caption = "Logistic Regression. Odds Ratio and Confidence Intervals for ICU Mortality-associated Factors. eICU Database", align = "c") %>%
+  kable_classic_2(full_width = F, html_font = "Cambria")
+
+write.csv(or_table_glm, "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/or_icudeath_2_eicu.csv")
+
+## Create a data frame with all possible levels for adverse-protective-inconclusive variable
+adverse_protective_levels_glm <- data.frame(adverse_protective = c("Adverse", "Protective", "Inconclusive"))
+
+# Build the Forest plot
+ggplot(or_icudeath_2, 
+       aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = term)) +
+  geom_point(size = 2, aes(color = adverse_protective_glm)) +
+  geom_errorbarh(height = 0.2, aes(color = adverse_protective_glm)) +
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  labs(x = "Odds Ratio", y = NULL, title = "Logistic Regression. Odds Ratio and Confidence Intervals\nfor Hospital Mortality-associated Factors. eICU Database") +
+  theme_minimal() +
+  scale_color_manual(
+    values = c("#c0392b", "#27ae60", "gray70"),
+    labels = c("Adverse", "Protective", "Inconclusive"),
+    name = "Effect on Outcome",
+    limits = adverse_protective_levels_glm$adverse_protective_glm) + #establishes limits of color scale
+  scale_x_continuous(limits = c(0.5, 2)) +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "top",
+    axis.ticks = element_blank(),
+    axis.text.x = element_text(color = "#2c3e50"),
+    axis.text.y = element_text(color = "#2c3e50"
+    ))
+```
+
+## Gráfico ggplot2
+
+## Plot glm (PRESENTACIÓN) multivariante
+
+```{r}
+plot_logreg_icudeath <- final_df_er_sepsis %>%
+  ggplot(aes(x = er_los_hrs, y = plogis(predict(logreg_icudeath, newdata = .)), color = unitdischargestatus)) +
+  geom_smooth(method = "glm", se = TRUE, level = 0.95, aes(fill = unitdischargestatus), alpha = 0.3) +
+  labs(title = "Logistic Regression Plot") +
+  theme_bw() +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5))
+
+print(plot_logreg_icudeath)
+```
+
+## Plot glm bivariable
+
+```{r}
+logistic_model <- glm(unitdischargestatus ~ er_los_hrs ,data = final_df_er_sepsis,
+    family = binomial)
+
+stargazer(logistic_model, type = "text")
+
+p1 <- final_df_er_sepsis %>%
+  ggplot(aes(x = er_los_hrs, y = unitdischargestatus)) +
+# geom_point(colour = "black") +
+  geom_smooth(method = "glm", se = TRUE, level = 0.95) +
+  labs(title = "Logistic Regression Plot") +
+  theme_bw() +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5))
+
+print(p1)
+```
+
+## Pruebas de rendimiento del modelo GLM
+
+```{r}
+predic <- predict(logreg_icudeath, type = "response")
+clases_predichas1 <- ifelse(predic > 0.5,1,0)
+matriz_confusion1 <- table( Actual = final_df_er_sepsis$unitdischargestatu, predicha = clases_predichas1)
+precission1 <- (matriz_confusion1[2, 2] + matriz_confusion1[1, 1]) / sum(matriz_confusion1)
+recall1 <- matriz_confusion1[2, 2] / sum(matriz_confusion1[2, ])
+f1_score1 <- 2 * (precission1 * recall1) / (precission1 + recall1)
+
+especificidad1 <- matriz_confusion1[1, 1] / sum(matriz_confusion1[1, ])
+exactitud1 <- (matriz_confusion1[1, 1] + matriz_confusion1[2, 2]) / sum(matriz_confusion1)
+
+
+print(precission1)
+print(recall1)
+print(f1_score1)
+print(especificidad1)
+print(exactitud1)
+print(matriz_confusion1)
+```
+## Regresión con variables significativas (selección de características) según resultados del modelo anterior 
+```{r}
+logreg_icudeath_seleccion <- glm(
+   unitdischargestatus ~ er_los_hrs + age + apacheadmissiondx + hist_other_bin + hist_cancer_bin + hist_diabetes_bin + final_charlson_score + apachescoreIV, data = final_df_er_sepsis,
+    family = binomial(link = "logit"))
+summary(logreg_icudeath_seleccion)
+
+predic_seleccion <- predict(logreg_icudeath_seleccion, type = "response")
+clases_predichas_seleccion <- ifelse(predic_seleccion > 0.5,1,0)
+matriz_confusion_seleccion <- table( Actual = final_df_er_sepsis$unitdischargestatus, predicha = clases_predichas_seleccion)
+precission_seleccion <- (matriz_confusion_seleccion[2, 2] + matriz_confusion_seleccion[1, 1]) / sum(matriz_confusion_seleccion)
+recall_seleccion <- matriz_confusion_seleccion[2, 2] / sum(matriz_confusion_seleccion[2, ])
+f1_score_seleccion <- 2 * (precission_seleccion * recall_seleccion) / (precission_seleccion + recall_seleccion)
+
+especificidad_seleccion <- matriz_confusion_seleccion[1, 1] / sum(matriz_confusion_seleccion[1, ])
+exactitud_seleccion <- (matriz_confusion_seleccion[1, 1] + matriz_confusion_seleccion[2, 2]) / sum(matriz_confusion_seleccion)
+
+
+print(precission_seleccion)
+print(recall_seleccion)
+print(f1_score_seleccion)
+print(especificidad_seleccion)
+print(exactitud_seleccion)
+print(matriz_confusion_seleccion)
+```
+
+
+
