@@ -714,28 +714,6 @@ final_df_er_sepsis %>%
   )
 ```
 
-## Pruebas de rendimiento del modelo GAM
-
-```{r}
-predicciones <- predict(gam_mortality_unit, type = "response")
-clases_predichas <- ifelse(predicciones > 0.5,1,0)
-matriz_confusion <- table( Actual = final_df_er_sepsis$unitdischargestatus, predicha = clases_predichas)
-precission <- (matriz_confusion[2, 2] + matriz_confusion[1, 1]) / sum(matriz_confusion)
-recall <- matriz_confusion[2, 2] / sum(matriz_confusion[2, ])
-f1_score <- 2 * (precission * recall) / (precission + recall)
-
-especificidad <- matriz_confusion[1, 1] / sum(matriz_confusion[1, ])
-exactitud <- (matriz_confusion[1, 1] + matriz_confusion[2, 2]) / sum(matriz_confusion)
-
-
-print(precission)
-print(recall)
-print(f1_score)
-print(especificidad)
-print(exactitud)
-print(matriz_confusion)
-```
-
 # GLM VERDADERO
 
 ```{r}
@@ -870,28 +848,8 @@ p1 <- final_df_er_sepsis %>%
 print(p1)
 ```
 
-## Pruebas de rendimiento del modelo GLM
-
-```{r}
-predic <- predict(logreg_icudeath, type = "response")
-clases_predichas1 <- ifelse(predic > 0.5,1,0)
-matriz_confusion1 <- table( Actual = final_df_er_sepsis$unitdischargestatu, predicha = clases_predichas1)
-precission1 <- (matriz_confusion1[2, 2] + matriz_confusion1[1, 1]) / sum(matriz_confusion1)
-recall1 <- matriz_confusion1[2, 2] / sum(matriz_confusion1[2, ])
-f1_score1 <- 2 * (precission1 * recall1) / (precission1 + recall1)
-
-especificidad1 <- matriz_confusion1[1, 1] / sum(matriz_confusion1[1, ])
-exactitud1 <- (matriz_confusion1[1, 1] + matriz_confusion1[2, 2]) / sum(matriz_confusion1)
-
-
-print(precission1)
-print(recall1)
-print(f1_score1)
-print(especificidad1)
-print(exactitud1)
-print(matriz_confusion1)
-```
 ## Regresión con variables significativas (selección de características) según resultados del modelo anterior 
+
 ```{r}
 logreg_icudeath_seleccion <- glm(
    unitdischargestatus ~ er_los_hrs + age + apacheadmissiondx + hist_other_bin + hist_cancer_bin + hist_diabetes_bin + final_charlson_score + apachescoreIV, data = final_df_er_sepsis,

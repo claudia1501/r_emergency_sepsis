@@ -35,7 +35,7 @@ library(randomForest)
 library(car)
 library(svglite)
 library(marginaleffects)
-
+library(MLmetrics)
 ```
 
 # Load Data
@@ -173,6 +173,79 @@ ggplot(or_icudeath_gam2,
     ))
 ```
 
+### Calculo de las métricas de rendimiento con el 100% de los datos
+
+```{r}
+# Predicción usando el 100% de los datos
+predictions_100 <- predict(gam_simple, newdata = final_df_er_sepsis, type = "response")
+predictions_class_100 <- ifelse(predictions_100 > 0.5, 1, 0)
+
+# Métricas de rendimiento
+conf_matrix_100 <- confusionMatrix(as.factor(predictions_class_100), as.factor(final_df_er_sepsis$unitdischargestatus))
+
+precision_100 <- conf_matrix_100$byClass['Pos Pred Value']
+recall_100 <- conf_matrix_100$byClass['Sensitivity']
+f1_100 <- F1_Score(as.numeric(final_df_er_sepsis$unitdischargestatus), predictions_class_100)
+specificity_100 <- conf_matrix_100$byClass['Specificity']
+accuracy_100 <- conf_matrix_100$overall['Accuracy']
+
+# Imprimir resultados
+print(conf_matrix_100)
+print(paste("Precision: ", precision_100))
+print(paste("Recall: ", recall_100))
+print(paste("F1 Score: ", f1_100))
+print(paste("Specificity: ", specificity_100))
+print(paste("Accuracy: ", accuracy_100))
+
+```
+### Calculo de las métricas de rendimiento con 80% train y 20% test de los datos
+
+```{r}
+# Dividir los datos en 80% entrenamiento y 20% prueba
+set.seed(123)  # Para reproducibilidad
+trainIndex <- createDataPartition(final_df_er_sepsis$unitdischargestatus, p = 0.8, list = FALSE, times = 1)
+trainData <- final_df_er_sepsis[trainIndex, ]
+testData <- final_df_er_sepsis[-trainIndex, ]
+
+# Entrenar el modelo con el conjunto de entrenamiento
+gam_simple_train <- bam(unitdischargestatus ~ 
+                    s(er_los_hrs, k=3) + 
+                    vasopressors +
+                    sex + 
+                    ethnicity + 
+                    apachescoreIV +  
+                    final_charlson_score + 
+                    hist_diabetes_bin +
+                    hist_renal_bin + 
+                    hist_cancer_bin + 
+                    hist_chf_bin + 
+                    hist_copd_bin + 
+                    hist_other_bin,
+                  data = final_df_er_sepsis,
+                  family = binomial)
+
+# Predicción en el conjunto de prueba
+predictions_test <- predict(gam_simple_train, newdata = testData, type = "response")
+predictions_class_test <- ifelse(predictions_test > 0.5, 1, 0)
+
+# Métricas de rendimiento
+conf_matrix_test <- confusionMatrix(as.factor(predictions_class_test), as.factor(testData$unitdischargestatus))
+
+precision_test <- conf_matrix_test$byClass['Pos Pred Value']
+recall_test <- conf_matrix_test$byClass['Sensitivity']
+f1_test <- F1_Score(as.numeric(testData$unitdischargestatus), predictions_class_test)
+specificity_test <- conf_matrix_test$byClass['Specificity']
+accuracy_test <- conf_matrix_test$overall['Accuracy']
+
+# Imprimir resultados
+print(conf_matrix_test)
+print(paste("Precision: ", precision_test))
+print(paste("Recall: ", recall_test))
+print(paste("F1 Score: ", f1_test))
+print(paste("Specificity: ", specificity_test))
+print(paste("Accuracy: ", accuracy_test))
+
+```
 
 ##GAM VASOPRESORES
 
@@ -205,8 +278,22 @@ plot2 <- marginaleffects::plot_predictions(gam_vaso, condition = c("er_los_hrs",
 
 ggsave("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/plot_gam_simple.png", plot = plot2, width = 8, height = 6)
 
-linear_model <- gam(unitdischargestatus ~ sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin  + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + apacheadmissiondx + vasopressors, data = final_df_er_sepsis,
-    family = binomial)
+linear_model <- gam(unitdischargestatus ~ 
+                      sex + 
+                      age + 
+                      ethnicity + 
+                      apachescoreIV +  
+                      final_charlson_score + 
+                      hist_diabetes_bin + 
+                      hist_renal_bin + 
+                      hist_cancer_bin + 
+                      hist_chf_bin + 
+                      hist_copd_bin + 
+                      hist_other_bin + 
+                      apacheadmissiondx + 
+                      vasopressors, 
+                    data = final_df_er_sepsis,
+                    family = binomial)
 
 anova(linear_model, gam_vaso, test = "Chisq")
 print(gam_vaso)
@@ -300,7 +387,80 @@ ggplot(or_icudeath_gam2,
     ))
 ```
 
+### Calculo de las métricas de rendimiento con el 100% de los datos
 
+```{r}
+# Predicción usando el 100% de los datos
+predictions_100 <- predict(gam_vaso, newdata = final_df_er_sepsis, type = "response")
+predictions_class_100 <- ifelse(predictions_100 > 0.5, 1, 0)
+
+# Métricas de rendimiento
+conf_matrix_100 <- confusionMatrix(as.factor(predictions_class_100), as.factor(final_df_er_sepsis$unitdischargestatus))
+
+precision_100 <- conf_matrix_100$byClass['Pos Pred Value']
+recall_100 <- conf_matrix_100$byClass['Sensitivity']
+f1_100 <- F1_Score(as.numeric(final_df_er_sepsis$unitdischargestatus), predictions_class_100)
+specificity_100 <- conf_matrix_100$byClass['Specificity']
+accuracy_100 <- conf_matrix_100$overall['Accuracy']
+
+# Imprimir resultados
+print(conf_matrix_100)
+print(paste("Precision: ", precision_100))
+print(paste("Recall: ", recall_100))
+print(paste("F1 Score: ", f1_100))
+print(paste("Specificity: ", specificity_100))
+print(paste("Accuracy: ", accuracy_100))
+
+```
+
+### Calculo de las métricas de rendimiento con 80% train y 20% test de los datos
+
+```{r}
+# Dividir los datos en 80% entrenamiento y 20% prueba
+set.seed(123)  # Para reproducibilidad
+trainIndex <- createDataPartition(final_df_er_sepsis$unitdischargestatus, p = 0.8, list = FALSE, times = 1)
+trainData <- final_df_er_sepsis[trainIndex, ]
+testData <- final_df_er_sepsis[-trainIndex, ]
+
+# Entrenar el modelo con el conjunto de entrenamiento
+gam_vaso_train <- bam(unitdischargestatus ~ 
+                    er_los_hrs:vasopressors + 
+                    s(er_los_hrs, k=3) + 
+                    sex + 
+                    ethnicity + 
+                    apachescoreIV +  
+                    final_charlson_score + 
+                    hist_diabetes_bin +
+                    hist_renal_bin + 
+                    hist_cancer_bin + 
+                    hist_chf_bin + 
+                    hist_copd_bin + 
+                    hist_other_bin,
+                  data = trainData,
+                  family = binomial)
+
+# Predicción en el conjunto de prueba
+predictions_test <- predict(gam_vaso_train, newdata = testData, type = "response")
+predictions_class_test <- ifelse(predictions_test > 0.5, 1, 0)
+
+# Métricas de rendimiento
+conf_matrix_test <- confusionMatrix(as.factor(predictions_class_test), as.factor(testData$unitdischargestatus))
+
+precision_test <- conf_matrix_test$byClass['Pos Pred Value']
+recall_test <- conf_matrix_test$byClass['Sensitivity']
+f1_test <- F1_Score(as.numeric(testData$unitdischargestatus), predictions_class_test)
+specificity_test <- conf_matrix_test$byClass['Specificity']
+accuracy_test <- conf_matrix_test$overall['Accuracy']
+
+# Imprimir resultados
+print(conf_matrix_test)
+print(paste("Precision: ", precision_test))
+print(paste("Recall: ", recall_test))
+print(paste("F1 Score: ", f1_test))
+print(paste("Specificity: ", specificity_test))
+print(paste("Accuracy: ", accuracy_test))
+
+```
 
 
 
