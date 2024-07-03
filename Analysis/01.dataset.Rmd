@@ -432,68 +432,13 @@ labelloc=\"t\";  // Colocar el título arriba del diagrama
 grViz(flowchart_code)
 ```
 
-#Pruebas de rendimiento de cada variable
-
-```{r}
-chisq.test(final_df_er_sepsis$unittype, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
-chisq.test(final_df_er_sepsis$apacheadmissiondx, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
-chisq.test(final_df_er_sepsis$ethnicity, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
-chisq.test(final_df_er_sepsis$bact_resist_level, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
-chisq.test(final_df_er_sepsis$hist_diabetes_bin, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
-chisq.test(final_df_er_sepsis$hist_renal_bin, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
-chisq.test(final_df_er_sepsis$hist_cancer_bin, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
-chisq.test(final_df_er_sepsis$hist_chf_bin, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
-chisq.test(final_df_er_sepsis$hist_copd_bin, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
-chisq.test(final_df_er_sepsis$hist_other_bin, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
-chisq.test(final_df_er_sepsis$er_los_hrs, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
-chisq.test(final_df_er_sepsis$age, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
-chisq.test(final_df_er_sepsis$apachescoreIV, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
-chisq.test(final_df_er_sepsis$final_charlson_score, final_df_er_sepsis$unitdischargestatus, correct = TRUE)
-```
-
-```{r}
-# Paso 2: Análisis de Variables Numéricas
-
-# Correlación entre er_los_hrs, age, apachescoreIV y final_charlson_score con la variable de resultado
-cor(final_df_er_sepsis$er_los_hrs, final_df_er_sepsis$unitdischargestatus, use = "everything",
-    method = c("spearman"))
-cor(final_df_er_sepsis$age, final_df_er_sepsis$unitdischargestatus, use = "everything", method = "spearman")
-cor(final_df_er_sepsis$apachescoreIV, final_df_er_sepsis$unitdischargestatus, use = "everything", method = "spearman")
-cor(final_df_er_sepsis$final_charlson_score, final_df_er_sepsis$unitdischargestatus, use = "everything", method = "spearman")
-
-```
-
-```{r}
-# Paso 3: Análisis de Variables de Texto
-
-# Conversión de bact_resist_level en una variable categórica
-final_df_er_sepsis$bact_resist_level <- as.factor(final_df_er_sepsis$bact_resist_level)
-
-# Análisis de la relación entre bact_resist_level y la variable de resultado
-table(final_df_er_sepsis$bact_resist_level, final_df_er_sepsis$unitdischargestatus)
-
-# Cargar la biblioteca para realizar pruebas de chi-cuadrado
-library(stats)
-
-# Crear la tabla de contingencia
-contingency_table <- table(final_df_er_sepsis$bact_resist_level, final_df_er_sepsis$unitdischargestatus)
-
-# Realizar la prueba de chi-cuadrado
-chi_sq_test <- chisq.test(contingency_table)
-
-# Mostrar los resultados de la prueba
-print(chi_sq_test)
-
-```
-
 # Análisis de subgrupos shock séptico (vasopresores)
 
 ```{r}
 final_shock_séptico <- final_df_er_sepsis %>%
-  select(unitdischargestatus, er_los_hrs, sex, age, ethnicity, apachescoreIV, final_charlson_score, 
-         hist_diabetes_bin, hist_renal_bin, hist_cancer_bin, hist_chf_bin, hist_copd_bin, hist_other_bin,
-         apacheadmissiondx, bact_resist_level, vasopressors) %>%
-  filter(vasopressors == 1)
+  select(hist_diabetes_bin, vasopressors) %>%
+  filter(hist_diabetes_bin == 1)
+
 final_df_er_sepsis <- distinct(final_shock_séptico)
 ```
 
