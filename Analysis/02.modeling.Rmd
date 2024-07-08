@@ -57,12 +57,13 @@ gam_simple <- bam(unitdischargestatus ~
                     ethnicity + 
                     apachescoreIV +  
                     final_charlson_score + 
-                    hist_diabetes_bin +
+                    diabetes +
                     hist_renal_bin + 
                     hist_cancer_bin + 
                     hist_chf_bin + 
                     hist_copd_bin + 
-                    hist_other_bin,
+                    hist_other_bin +
+                    hist_stroke_bin
                     #apacheadmissiondx, 
                   data = final_df_er_sepsis,
                   family = binomial)
@@ -256,13 +257,13 @@ gam_vaso <- bam(unitdischargestatus ~
                     sex + 
                     ethnicity + 
                     apachescoreIV +  
-                    final_charlson_score + 
-                    hist_diabetes_bin +
-                    hist_renal_bin + 
-                    hist_cancer_bin + 
-                    hist_chf_bin + 
-                    hist_copd_bin + 
-                    hist_other_bin,
+                    final_charlson_score, 
+                    #hist_diabetes_bin +
+                    #hist_renal_bin + 
+                    #hist_cancer_bin + 
+                    #hist_chf_bin + 
+                    #hist_copd_bin + 
+                    #hist_other_bin,
                     #apacheadmissiondx, 
                   data = final_df_er_sepsis,
                   family = binomial)
@@ -296,7 +297,7 @@ linear_model <- gam(unitdischargestatus ~
                     family = binomial)
 
 anova(linear_model, gam_vaso, test = "Chisq")
-print(gam_vaso)
+print(plot2)
 ```
 
 ###FOREST PLOT
@@ -307,7 +308,7 @@ or_icudeath_gam <- extract_coef_pval_OR(gam_vaso)
 
 ## Ordenación de variables y asignación de nombres adecuados
 variables_order <- rev(c(
-  "Intercept", "Tiempo de ingreso en UCI (horas)", "Sex (Male)", "Age (years)", "Ethnicity", "ApachescoreIV", "Final Charlson Score", "Diabetes History", "Renal History", "Cancer History", "CHF History", "COPD History", "Other History"
+  "Intercept", "Tiempo de ingreso en UCI (horas)", "Sex (Male)", "Age (years)", "Ethnicity", "ApachescoreIV", "Final Charlson Score" # "Renal History", "Cancer History", "CHF History", "COPD History", "Other History"
 ))
 
 or_icudeath_gam2 <- or_icudeath_gam %>%
@@ -320,12 +321,11 @@ or_icudeath_gam2 <- or_icudeath_gam %>%
       term == "ethnicity" ~ "Ethnicity",
       term == "apachescoreIV" ~ "ApachescoreIV",
       term == "final_charlson_score" ~ "Final Charlson Score",
-      term == "hist_diabetes_bin" ~ "Diabetes History",
-      term == "hist_renal_bin" ~ "Renal History",
-      term == "hist_cancer_bin" ~ "Cancer History",
-      term == "hist_chf_bin" ~ "CHF History",
-      term == "hist_copd_bin" ~ "COPD History",
-      term == "hist_other_bin" ~ "Other History",
+      #term == "hist_renal_bin" ~ "Renal History",
+      #term == "hist_cancer_bin" ~ "Cancer History",
+      #term == "hist_chf_bin" ~ "CHF History",
+      #term == "hist_copd_bin" ~ "COPD History",
+      #term == "hist_other_bin" ~ "Other History",
       #term == "apacheadmissiondx" ~ "Apacheadmissiondx",
       #term == "bact_resist_level" ~ "Bact resist level",
       TRUE ~ as.character(term)
@@ -374,7 +374,7 @@ ggplot(or_icudeath_gam2,
     labels = c("Adverse", "Protective", "Inconclusive"),
     name = "Effect on Outcome",
     limits = adverse_protective_levels_gam$adverse_protective_gam) + #establishes limits of color scale
-  scale_x_continuous(limits = c(0.5, 3)) +
+  scale_x_continuous(limits = c(0.5, 2)) +
   theme(
     plot.background = element_rect(fill = "white"),
     panel.grid.major.y = element_blank(),
@@ -429,13 +429,13 @@ gam_vaso_train <- bam(unitdischargestatus ~
                     sex + 
                     ethnicity + 
                     apachescoreIV +  
-                    final_charlson_score + 
-                    hist_diabetes_bin +
-                    hist_renal_bin + 
-                    hist_cancer_bin + 
-                    hist_chf_bin + 
-                    hist_copd_bin + 
-                    hist_other_bin,
+                    final_charlson_score, 
+                    #hist_diabetes_bin +
+                    #hist_renal_bin + 
+                    #hist_cancer_bin + 
+                    #hist_chf_bin + 
+                    #hist_copd_bin + 
+                    #hist_other_bin,
                   data = trainData,
                   family = binomial)
 
