@@ -82,10 +82,6 @@ charlson_score <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_ur
 history_dx <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/history_dx.sql"))
 pivoted_med <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/pivoted_med.sql"))
 shock_vassop <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/shock_vassop.sql"))
-diabetes_completo <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/diabetes_completo.sql"))
-diabetes_doble <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/diabetes_doble.sql"))
-diabetes_uno <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/diabetes_uno.sql"))
-diabetes_dos <-  run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Analysis/sql/diabetes_dos.sql"))
 ```
 
 # Joining 1º df
@@ -101,14 +97,27 @@ dfs_to_join <- list(patients_total,
                     charlson_score,
                     shock_vassop) #history_dx
 
-final_df <- Reduce(function(x,y) merge(x,y, by = "patientunitstayid", all.x = TRUE), dfs_to_join)
-
-
 
 ##Criterio exlcusion
 a <- nrow(final_df)
 print('Initial number of patients: ')
 print(a)
+```
+
+#NEW VARIABLES
+
+##Treatments
+
+```{r}
+# Crear una columna nueva con el número de tratamientos por paciente, considerando NAs
+shock_df <- shock_vassop %>%
+  group_by(patientunitstayid) %>%
+  mutate(num_treatments = ifelse(all(is.na(treatmentstring)), 0, n_distinct(treatmentstring, na.rm = TRUE))) %>%
+  ungroup()
+
+# Crear una columna dicotómica 0 y 1, 0 no se le administra nada, 1 si se le administra
+shock_df_1 <- shock_df %>%
+  mutate(vasopressors = ifelse(num_treatments == 0, 0, 1))
 ```
 
 # Exclusion criteria
@@ -180,7 +189,16 @@ print(g)
 
 write.csv(final_df, file = "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/final_df_sinimputar.csv", row.names = FALSE)
 
+duplicados <- final_df[duplicated(final_df$patientunitstayid) | duplicated(final_df$patientunitstayid, fromLast = TRUE), ]
+print(duplicados)
+final_df_sin_duplicados <- final_df[!duplicated(final_df$patientunitstayid), ]
+
+# Verificar que no hay duplicados
+contados <- table(final_df_sin_duplicados$patientunitstayid)
+print(contados[contados > 1])
 ```
+
+
 
 # Imputations 
 
@@ -380,27 +398,11 @@ final_df <- final_df %>%
   mutate(vasopressors = ifelse(num_treatments == 0, 0, 1))
 ```
 
-##Diabetes
-
-```{r}
-final_df<- final_df %>%
-  mutate(hist_diabetes = replace_na(hist_diabetes, 0)) %>%
-  mutate(apache_diabetes = replace_na(apache_diabetes, 0)) %>%
-  mutate(diagnosis_diabetes = replace_na(diagnosis_diabetes, 0))
- 
-
-  
-final_df <- final_df %>%
-  mutate(diabetes = ifelse(hist_diabetes == 1 | apache_diabetes == 1 | diagnosis_diabetes == 1, 1, 0))
-
-  
-```
-
 # Final df
 
 ```{r}
 final_df_er_sepsis <- final_df %>%
-  select(unitdischargestatus,er_los_hrs, sex, age, ethnicity, apachescoreIV, final_charlson_score,apacheadmissiondx, vasopressors) #hist_renal_bin, hist_diabetes_bin, hist_cancer_bin, hist_chf_bin, hist_copd_bin,hist_other_bin
+  select(patientunitstayid,unitdischargestatus,er_los_hrs, sex, age, ethnicity, apachescoreIV, final_charlson_score, vasopressors) #hist_renal_bin, hist_diabetes_bin, hist_cancer_bin, hist_chf_bin, hist_copd_bin,hist_other_bin
 
 final_df_er_sepsis <- distinct(final_df_er_sepsis)
 ```
