@@ -18,8 +18,9 @@ library(htmltools)
 ```{r}
 final_df_er_sepsis <- read.csv("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/selected_data.csv")
 message("Datos cargados correctamente")
+
 #Lista de variables incluidas en la table 1
-vars_in_table1 <- names(final_df_er_sepsis %>% select(unitdischargestatus,er_los_hrs, sex, age, ethnicity, apachescoreIV, final_charlson_score, vasopressors))
+vars_in_table1 <- names(final_df_er_sepsis %>% select(unitdischargestatus,er_los_hrs, sex, age, ethnicity, apachescoreIV, final_charlson_score, vasopressors,first_treatmentoffset))
 
 ```
 

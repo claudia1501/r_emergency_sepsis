@@ -875,5 +875,269 @@ print(exactitud_seleccion)
 print(matriz_confusion_seleccion)
 ```
 
+### Variable sensitivity:level, change na = no infection
+
+```{r}
+final_df <- final_df %>%
+  mutate(
+    bact_resist_level = replace_na(final_df$bact_resist_level, 'Not infection')
+  )
+
+final_df <- final_df %>%
+  mutate(bact_resist_level = dplyr::recode(bact_resist_level, "No infection" = "Not infection"))
+```
+
+### History.dx. 
+
+```{r}
+final_df<- final_df %>%
+  mutate(hist_metastasis_bin = replace_na(hist_metastasis_bin, 0)) %>%
+  mutate(hist_vih_sida_bin = replace_na(hist_vih_sida_bin, 0)) %>%
+  mutate(hist_cirrosis_liver_bin = replace_na(hist_cirrosis_liver_bin, 0)) %>%
+  mutate(hist_stroke_bin = replace_na(hist_stroke_bin, 0)) %>%
+  mutate(hist_renal_bin = replace_na(hist_renal_bin, 0)) %>%
+  mutate(hist_diabetes_bin = replace_na(hist_diabetes_bin, 0)) %>%
+  mutate(hist_cancer_bin = replace_na(hist_cancer_bin, 0)) %>%
+  mutate(hist_leukemia_bin = replace_na(hist_leukemia_bin, 0)) %>%
+  mutate(hist_lymphoma_bin = replace_na(hist_lymphoma_bin, 0)) %>%
+  mutate(hist_myocardial_infar_bin = replace_na(hist_myocardial_infar_bin, 0)) %>%
+  mutate(hist_chf_bin = replace_na(hist_chf_bin, 0)) %>%
+  mutate(hist_pvd_bin = replace_na(hist_pvd_bin, 0)) %>%
+  mutate(hist_tia_bin = replace_na(hist_tia_bin, 0)) %>%
+  mutate(hist_dementia_bin = replace_na(hist_dementia_bin, 0)) %>%
+  mutate(hist_copd_bin = replace_na(hist_copd_bin, 0)) %>%
+  mutate(hist_ctd_bin = replace_na(hist_ctd_bin, 0)) %>%
+  mutate(hist_pud_bin = replace_na(hist_pud_bin, 0)) %>%
+  mutate(hist_liver_bin = replace_na(hist_liver_bin, 0))
+```
+
+```{r}
+# Lista de variables
+variables <- c("hist_metastasis_bin", "hist_vih_sida_bin", "hist_cirrosis_liver_bin", "hist_stroke_bin", 
+               "hist_renal_bin", "hist_diabetes_bin", "hist_cancer_bin", "hist_leukemia_bin", 
+               "hist_lymphoma_bin", "hist_myocardial_infar_bin", "hist_chf_bin", "hist_pvd_bin", 
+               "hist_tia_bin", "hist_copd_bin", "hist_ctd_bin", 
+               "hist_pud_bin", "hist_liver_bin") #
+
+# Utilizar dplyr para realizar el conteo y seleccionar las cinco variables con más 1
+top5_hist_dx <- final_df %>%
+  select(all_of(variables)) %>%
+  summarise(across(everything(), ~sum(. == 1), .names = "Conteo_{.col}")) %>%
+  pivot_longer(everything(), names_to = "Variable", values_to = "Conteo") %>%
+  arrange(desc(Conteo)) %>%
+  head(5)
+
+# Mostrar el resultado final
+print(top5_hist_dx)
+
+# Agrupar resto de hist en una misma variable other
+## Columna de cada pacientes donde se indica el total de cormobilidades que tiene cada uno de ellos
+final_df <- final_df %>%
+  mutate(hist_other = rowSums(select(., starts_with("hist_")) == 1))
+
+## Columna de cada paciente codificada en 0 y 1, 0 sino tiene nada , 1 si tiene 1 o más cormobilidades
+final_df <- final_df %>%
+  mutate(hist_other_bin = ifelse(hist_other == 0, 0, 1))
+
+```
+
+##GAM SIMPLE (SIN INTERACCIÓN DE VASOPRESORES)
+
+```{r}
+gam_simple <- bam(unitdischargestatus ~ 
+                    s(er_los_hrs, k=3) + 
+                    vasopressors +
+                    sex + 
+                    ethnicity + 
+                    apachescoreIV +  
+                    final_charlson_score + 
+                    diabetes +
+                    hist_renal_bin + 
+                    hist_cancer_bin + 
+                    hist_chf_bin + 
+                    hist_copd_bin + 
+                    hist_other_bin +
+                    hist_stroke_bin
+                    #apacheadmissiondx, 
+                  data = final_df_er_sepsis,
+                  family = binomial)
+
+plot1 <- marginaleffects::plot_predictions(gam_simple, condition = c("er_los_hrs")) + 
+  theme_bw() + 
+  labs(x = "Time from admission (hours)",
+       y = "Predicted probability of death") + 
+  ylim(0, 0.5)
+
+ggsave("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/plot_gam_vaso.png", plot = plot1, width = 8, height = 6)
 
 
+
+linear_model <- gam(unitdischargestatus ~ sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin  + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + apacheadmissiondx + vasopressors, data = final_df_er_sepsis,
+    family = binomial)
+
+anova(linear_model, gam_simple, test = "Chisq")
+print(gam_simple)
+```
+
+
+###FOREST PLOT
+
+```{r}
+## Extracción de Odds Ratio (OR)
+or_icudeath_gam <- extract_coef_pval_OR(gam_simple)
+
+## Ordenación de variables y asignación de nombres adecuados
+variables_order <- rev(c(
+  "Intercept", "Tiempo de ingreso en UCI (horas)", "Sex (Male)", "Age (years)", "Ethnicity", "ApachescoreIV", "Final Charlson Score", "Diabetes History", "Renal History", "Cancer History", "CHF History", "COPD History", "Other History"
+))
+
+or_icudeath_gam2 <- or_icudeath_gam %>%
+  mutate(
+    term = case_when(
+      term == "(Intercept)" ~ "Intercept",
+      term == "er_los_hrs" ~ "Tiempo de ingreso en UCI (horas)",
+      term == "sex" ~ "Sex (Male)",
+      term == "age" ~ "Age (years)",
+      term == "ethnicity" ~ "Ethnicity",
+      term == "apachescoreIV" ~ "ApachescoreIV",
+      term == "final_charlson_score" ~ "Final Charlson Score",
+      term == "hist_diabetes_bin" ~ "Diabetes History",
+      term == "hist_renal_bin" ~ "Renal History",
+      term == "hist_cancer_bin" ~ "Cancer History",
+      term == "hist_chf_bin" ~ "CHF History",
+      term == "hist_copd_bin" ~ "COPD History",
+      term == "hist_other_bin" ~ "Other History",
+      #term == "apacheadmissiondx" ~ "Apacheadmissiondx",
+      #term == "bact_resist_level" ~ "Bact resist level",
+      TRUE ~ as.character(term)
+    ),
+    adverse_protective_gam = case_when(
+      OR_lower > 1 & OR_upper > 1 ~ "Adverse",
+      OR_lower < 1 & OR_upper < 1 ~ "Protective",
+      OR_lower <= 1 & OR_upper >= 1 ~ "Inconclusive"
+    ),
+    adverse_protective_gam = factor(adverse_protective_gam, levels = c("Adverse", "Protective", "Inconclusive"))
+  ) %>%
+  filter(term != "Intercept")  # Filtrar si es necesario
+
+
+## Escritura de resultados en CSV
+#write.csv(or_icudeath_2, "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/or_icudeath_2.csv")
+
+## Impresión de resultados en formato HTML y exportación de una tabla kable
+#htmlTable(or_icudeath_2[,c("term", "OR", "OR_lower", "OR_upper")], caption = "Logistic Regression. Odds Ratio and Confidence Intervals for ICU Mortality-associated Factors. eICU Database")
+
+or_table_gam <- or_icudeath_gam2 %>%
+  select(term, OR, OR_lower, OR_upper) %>%
+  mutate(
+    term = factor(term, levels = variables_order),
+    OR_upper = ifelse(OR_upper <= 100, sprintf("%.2f", OR_upper), sprintf("%.2f", OR_upper))
+  ) %>%
+  arrange(desc(term)) %>%
+  kbl(caption = "GAM model. Odds Ratio and Confidence Intervals for ICU Mortality-associated Factors. eICU Database", align = "c") %>%
+  kable_classic_2(full_width = F, html_font = "Cambria")
+
+write.csv(or_table_gam, "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/or_icudeath_gam2_eicu.csv")
+
+## Create a data frame with all possible levels for adverse-protective-inconclusive variable
+adverse_protective_levels_gam <- data.frame(adverse_protective = c("Adverse", "Protective", "Inconclusive"))
+
+# Build the Forest plot
+ggplot(or_icudeath_gam2, 
+       aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = term)) +
+  geom_point(size = 2, aes(color = adverse_protective_gam)) +
+  geom_errorbarh(height = 0.2, aes(color = adverse_protective_gam)) +
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  labs(x = "Odds Ratio", y = NULL, title = "GAM model. Odds Ratio and Confidence Intervals\nfor Hospital Mortality-associated Factors. eICU Database") +
+  theme_minimal() +
+  scale_color_manual(
+    values = c("#c0392b", "#27ae60", "gray70"),
+    labels = c("Adverse", "Protective", "Inconclusive"),
+    name = "Effect on Outcome",
+    limits = adverse_protective_levels_gam$adverse_protective_gam) + #establishes limits of color scale
+  scale_x_continuous(limits = c(0.5, 3)) +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "top",
+    axis.ticks = element_blank(),
+    axis.text.x = element_text(color = "#2c3e50"),
+    axis.text.y = element_text(color = "#2c3e50"
+    ))
+```
+
+### Calculo de las métricas de rendimiento con el 100% de los datos
+
+```{r}
+# Predicción usando el 100% de los datos
+predictions_100 <- predict(gam_simple, newdata = final_df_er_sepsis, type = "response")
+predictions_class_100 <- ifelse(predictions_100 > 0.5, 1, 0)
+
+# Métricas de rendimiento
+conf_matrix_100 <- confusionMatrix(as.factor(predictions_class_100), as.factor(final_df_er_sepsis$unitdischargestatus))
+
+precision_100 <- conf_matrix_100$byClass['Pos Pred Value']
+recall_100 <- conf_matrix_100$byClass['Sensitivity']
+f1_100 <- F1_Score(as.numeric(final_df_er_sepsis$unitdischargestatus), predictions_class_100)
+specificity_100 <- conf_matrix_100$byClass['Specificity']
+accuracy_100 <- conf_matrix_100$overall['Accuracy']
+
+# Imprimir resultados
+print(conf_matrix_100)
+print(paste("Precision: ", precision_100))
+print(paste("Recall: ", recall_100))
+print(paste("F1 Score: ", f1_100))
+print(paste("Specificity: ", specificity_100))
+print(paste("Accuracy: ", accuracy_100))
+
+```
+### Calculo de las métricas de rendimiento con 80% train y 20% test de los datos
+
+```{r}
+# Dividir los datos en 80% entrenamiento y 20% prueba
+set.seed(123)  # Para reproducibilidad
+trainIndex <- createDataPartition(final_df_er_sepsis$unitdischargestatus, p = 0.8, list = FALSE, times = 1)
+trainData <- final_df_er_sepsis[trainIndex, ]
+testData <- final_df_er_sepsis[-trainIndex, ]
+
+# Entrenar el modelo con el conjunto de entrenamiento
+gam_simple_train <- bam(unitdischargestatus ~ 
+                    s(er_los_hrs, k=3) + 
+                    vasopressors +
+                    sex + 
+                    ethnicity + 
+                    apachescoreIV +  
+                    final_charlson_score + 
+                    hist_diabetes_bin +
+                    hist_renal_bin + 
+                    hist_cancer_bin + 
+                    hist_chf_bin + 
+                    hist_copd_bin + 
+                    hist_other_bin,
+                  data = final_df_er_sepsis,
+                  family = binomial)
+
+# Predicción en el conjunto de prueba
+predictions_test <- predict(gam_simple_train, newdata = testData, type = "response")
+predictions_class_test <- ifelse(predictions_test > 0.5, 1, 0)
+
+# Métricas de rendimiento
+conf_matrix_test <- confusionMatrix(as.factor(predictions_class_test), as.factor(testData$unitdischargestatus))
+
+precision_test <- conf_matrix_test$byClass['Pos Pred Value']
+recall_test <- conf_matrix_test$byClass['Sensitivity']
+f1_test <- F1_Score(as.numeric(testData$unitdischargestatus), predictions_class_test)
+specificity_test <- conf_matrix_test$byClass['Specificity']
+accuracy_test <- conf_matrix_test$overall['Accuracy']
+
+# Imprimir resultados
+print(conf_matrix_test)
+print(paste("Precision: ", precision_test))
+print(paste("Recall: ", recall_test))
+print(paste("F1 Score: ", f1_test))
+print(paste("Specificity: ", specificity_test))
+print(paste("Accuracy: ", accuracy_test))
+
+```
