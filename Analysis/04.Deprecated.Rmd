@@ -950,15 +950,7 @@ gam_simple <- bam(unitdischargestatus ~
                     sex + 
                     ethnicity + 
                     apachescoreIV +  
-                    final_charlson_score + 
-                    diabetes +
-                    hist_renal_bin + 
-                    hist_cancer_bin + 
-                    hist_chf_bin + 
-                    hist_copd_bin + 
-                    hist_other_bin +
-                    hist_stroke_bin
-                    #apacheadmissiondx, 
+                    final_charlson_score,
                   data = final_df_er_sepsis,
                   family = binomial)
 
@@ -1141,3 +1133,23 @@ print(paste("Specificity: ", specificity_test))
 print(paste("Accuracy: ", accuracy_test))
 
 ```
+
+
+
+```{r}
+age_sex <- final_df_er_sepsis %>%
+  select(sex, age, unitdischargestatus)
+
+# Filtrar el dataframe para incluir solo las filas donde la edad está entre 16 y 50 años y unitdischargestatus es 1
+filtered_df <- final_df_er_sepsis %>%
+  select(sex, age, unitdischargestatus) %>%
+  filter(age >= 51, age <= 90, unitdischargestatus == 1)
+
+# Contar el número de hombres y mujeres en el dataframe filtrado
+sex_counts <- table(filtered_df$sex)
+
+# Imprimir los resultados
+print(sex_counts)
+
+```
+

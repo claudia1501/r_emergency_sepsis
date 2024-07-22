@@ -58,6 +58,7 @@ gam_vaso <- bam(unitdischargestatus ~
                     er_los_hrs:vasopressors + 
                     s(er_los_hrs, k=3) + 
                     sex + 
+                    age +
                     ethnicity + 
                     apachescoreIV +  
                     final_charlson_score, 
@@ -127,17 +128,17 @@ or_icudeath_gam <- extract_coef_pval_OR(gam_vaso)
 
 ## Ordenación de variables y asignación de nombres adecuados
 variables_order <- rev(c(
-  "Intercept", "ICU admission time (hours) and administration of vasopressors", "Sex (Male)", "Age (years)", "Ethnicity:", "ApachescoreIV", "Final Charlson Score" # "Renal History", "Cancer History", "CHF History", "COPD History", "Other History"
+  "Intercept", "Tiempo de ingreso en UCI (horas)", "Sex (Male)", "Age (years)", "Ethnicity", "ApachescoreIV", "Final Charlson Score"
 ))
 
 or_icudeath_gam2 <- or_icudeath_gam %>%
   mutate(
     term = case_when(
       term == "(Intercept)" ~ "Intercept",
-      term == "er_los_hrs:vasopressors" ~ "ICU admission time (hours) and administration of vasopressors",
+      term == "er_los_hrs" ~ "Tiempo de ingreso en UCI (horas)",
       term == "sex" ~ "Sex (Male)",
       term == "age" ~ "Age (years)",
-      term == "ethnicity" ~ "Ethnicity: ",
+      term == "ethnicity" ~ "Ethnicity",
       term == "apachescoreIV" ~ "ApachescoreIV",
       term == "final_charlson_score" ~ "Final Charlson Score",
       TRUE ~ as.character(term)
@@ -186,7 +187,7 @@ ggplot(or_icudeath_gam2,
     labels = c("Adverse", "Protective", "Inconclusive"),
     name = "Effect on Outcome",
     limits = adverse_protective_levels_gam$adverse_protective_gam) + #establishes limits of color scale
-  scale_x_continuous(limits = c(0.5, 2)) +
+  scale_x_continuous(limits = c(0.5, 3)) +
   theme(
     plot.background = element_rect(fill = "white"),
     panel.grid.major.y = element_blank(),
@@ -199,6 +200,7 @@ ggplot(or_icudeath_gam2,
     ))
 
 ggsave("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/forestplot_gam_vaso.png", plot = forest_plot, width = 8, height = 6)
+print(forest_plot)
 ```
 
 ### Calculo de las métricas de rendimiento con el 100% de los datos
