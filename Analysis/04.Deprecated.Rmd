@@ -948,6 +948,7 @@ gam_simple <- bam(unitdischargestatus ~
                     s(er_los_hrs, k=3) + 
                     vasopressors +
                     sex + 
+                    age +
                     ethnicity + 
                     apachescoreIV +  
                     final_charlson_score,
@@ -964,7 +965,7 @@ ggsave("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_s
 
 
 
-linear_model <- gam(unitdischargestatus ~ sex + age + ethnicity + apachescoreIV +  final_charlson_score + hist_diabetes_bin + hist_renal_bin  + hist_cancer_bin + hist_chf_bin + hist_copd_bin + hist_other_bin + apacheadmissiondx + vasopressors, data = final_df_er_sepsis,
+linear_model <- gam(unitdischargestatus ~ sex + age + ethnicity + apachescoreIV +  final_charlson_score + vasopressors, data = final_df_er_sepsis,
     family = binomial)
 
 anova(linear_model, gam_simple, test = "Chisq")
@@ -980,7 +981,7 @@ or_icudeath_gam <- extract_coef_pval_OR(gam_simple)
 
 ## Ordenación de variables y asignación de nombres adecuados
 variables_order <- rev(c(
-  "Intercept", "Tiempo de ingreso en UCI (horas)", "Sex (Male)", "Age (years)", "Ethnicity", "ApachescoreIV", "Final Charlson Score", "Diabetes History", "Renal History", "Cancer History", "CHF History", "COPD History", "Other History"
+  "Intercept", "Tiempo de ingreso en UCI (horas)", "Sex (Male)", "Age (years)", "Ethnicity", "ApachescoreIV", "Final Charlson Score", "Use of Vasopressors"
 ))
 
 or_icudeath_gam2 <- or_icudeath_gam %>%
@@ -993,19 +994,14 @@ or_icudeath_gam2 <- or_icudeath_gam %>%
       term == "ethnicity" ~ "Ethnicity",
       term == "apachescoreIV" ~ "ApachescoreIV",
       term == "final_charlson_score" ~ "Final Charlson Score",
-      term == "hist_diabetes_bin" ~ "Diabetes History",
-      term == "hist_renal_bin" ~ "Renal History",
-      term == "hist_cancer_bin" ~ "Cancer History",
-      term == "hist_chf_bin" ~ "CHF History",
-      term == "hist_copd_bin" ~ "COPD History",
-      term == "hist_other_bin" ~ "Other History",
+      term == "vasopressors" ~ "Use of Vasopressors",
       #term == "apacheadmissiondx" ~ "Apacheadmissiondx",
       #term == "bact_resist_level" ~ "Bact resist level",
       TRUE ~ as.character(term)
     ),
     adverse_protective_gam = case_when(
-      OR_lower > 1 & OR_upper > 1 ~ "Adverse",
-      OR_lower < 1 & OR_upper < 1 ~ "Protective",
+      OR_lower >= 1 & OR_upper >= 1 ~ "Adverse",
+      OR_lower <= 1 & OR_upper <= 1 ~ "Protective",
       OR_lower <= 1 & OR_upper >= 1 ~ "Inconclusive"
     ),
     adverse_protective_gam = factor(adverse_protective_gam, levels = c("Adverse", "Protective", "Inconclusive"))
@@ -1035,7 +1031,7 @@ write.csv(or_table_gam, "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sep
 adverse_protective_levels_gam <- data.frame(adverse_protective = c("Adverse", "Protective", "Inconclusive"))
 
 # Build the Forest plot
-ggplot(or_icudeath_gam2, 
+forest_plot_simple <- ggplot(or_icudeath_gam2, 
        aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = term)) +
   geom_point(size = 2, aes(color = adverse_protective_gam)) +
   geom_errorbarh(height = 0.2, aes(color = adverse_protective_gam)) +
@@ -1043,11 +1039,11 @@ ggplot(or_icudeath_gam2,
   labs(x = "Odds Ratio", y = NULL, title = "GAM model. Odds Ratio and Confidence Intervals\nfor Hospital Mortality-associated Factors. eICU Database") +
   theme_minimal() +
   scale_color_manual(
-    values = c("#c0392b", "#27ae60", "gray70"),
-    labels = c("Adverse", "Protective", "Inconclusive"),
+    values = c("Adverse" = "#c0392b", "Protective" = "#27ae60", "Inconclusive" = "#A5AAAC"),
+  labels = c("Adverse", "Protective", "Inconclusive"),
     name = "Effect on Outcome",
     limits = adverse_protective_levels_gam$adverse_protective_gam) + #establishes limits of color scale
-  scale_x_continuous(limits = c(0.5, 3)) +
+  scale_x_continuous(limits = c(0.5, 2.5)) +
   theme(
     plot.background = element_rect(fill = "white"),
     panel.grid.major.y = element_blank(),
@@ -1058,7 +1054,61 @@ ggplot(or_icudeath_gam2,
     axis.text.x = element_text(color = "#2c3e50"),
     axis.text.y = element_text(color = "#2c3e50"
     ))
+
+ggsave("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/forestplot_gam_simple.png", plot = forest_plot_simple, width = 8, height = 6)
 ```
+
+```{r}
+# Crear un DataFrame con los OR y sus IC
+or_data <- data.frame(
+  term = c("(Intercept)", "vasopressors", "sexM", "age", "ethnicityAfrican American", 
+           "ethnicityCaucasian", "ethnicityHispanic", "apachescoreIV", "final_charlson_score"),
+  Estimate = c(-5.909371, 0.701841, -0.132430, 0.005472, 0.028170, 
+               0.187701, -0.156909, 0.036773, 0.028466),
+  Std_Error = c(0.228659, 0.071404, 0.068142, 0.002734, 0.169160, 
+                0.135350, 0.210859, 0.001295, 0.013945)
+)
+
+# Calcular OR, IC Lower y IC Upper
+or_data <- or_data %>%
+  mutate(
+    OR = exp(Estimate),
+    OR_lower = exp(Estimate - 1.96 * Std_Error),
+    OR_upper = exp(Estimate + 1.96 * Std_Error),
+    adverse_protective_gam = case_when(
+      OR_lower > 1 & OR_upper > 1 ~ "Adverse",
+      OR_lower < 1 & OR_upper < 1 ~ "Protective",
+      OR_lower <= 1 & OR_upper >= 1 ~ "Inconclusive"
+    ),
+    adverse_protective_gam = factor(adverse_protective_gam, levels = c("Adverse", "Protective", "Inconclusive"))
+  )
+
+# Construir el forest plot
+ggplot(or_data, aes(x = OR, y = reorder(term, OR), xmin = OR_lower, xmax = OR_upper, color = adverse_protective_gam)) +
+  geom_point(size = 3) +  # Punto para el OR
+  geom_errorbarh(height = 0.2) +  # Barra de error para IC
+  geom_vline(xintercept = 1, linetype = "dashed", color = "red") +  # Línea vertical en x = 1
+  labs(x = "Odds Ratio", y = NULL, title = "Forest Plot of Odds Ratios and Confidence Intervals") +
+  scale_color_manual(
+    values = c("Adverse" = "#c0392b", "Protective" = "#27ae60", "Inconclusive" = "#A5AAAC"),
+    labels = c("Adverse", "Protective", "Inconclusive"),
+    name = "Effect on Outcome"
+  ) +
+  scale_x_continuous(limits = c(0, max(or_data$OR_upper) * 1.1)) +  # Ajustar los límites del eje x
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    plot.title = element_text(hjust = 0.5),
+    axis.text.y = element_text(color = "#2c3e50"),
+    axis.text.x = element_text(color = "#2c3e50"),
+    axis.ticks = element_blank()
+  )
+
+
+```
+
 
 ### Calculo de las métricas de rendimiento con el 100% de los datos
 

@@ -62,13 +62,6 @@ gam_vaso <- bam(unitdischargestatus ~
                     ethnicity + 
                     apachescoreIV +  
                     final_charlson_score, 
-                    #hist_diabetes_bin +
-                    #hist_renal_bin + 
-                    #hist_cancer_bin + 
-                    #hist_chf_bin + 
-                    #hist_copd_bin + 
-                    #hist_other_bin,
-                    #apacheadmissiondx, 
                   data = final_df_er_sepsis,
                   family = binomial)
 
@@ -89,33 +82,17 @@ linear_model <- glm(unitdischargestatus ~ er_los_hrs + sex + age + ethnicity + a
     family = binomial)
 
 anova(linear_model, gam_vaso, test = "Chisq")
-print(gam_simple)
+print(gam_vaso)
 
 
+# Calcular AIC de ambos modelos
+aic_linear <- AIC(linear_model)
+aic_gam <- AIC(gam_vaso)
 
+# Imprimir los AICs
+print(paste("AIC del modelo lineal:", aic_linear))
+print(paste("AIC del modelo GAM:", aic_gam))
 
-# Generar predicciones
-pred <- marginaleffects::predictions(gam_vaso, newdata = final_df_er_sepsis, type = "response")
-
-# Convertir a un dataframe
-pred_df <- as.data.frame(pred)
-
-# Multiplicar los valores predichos por 100
-pred_df$estimate <- pred_df$estimate * 100
-pred_df$conf.low <- pred_df$conf.low * 100
-pred_df$conf.high <- pred_df$conf.high * 100
-
-# Hacer el plot con los valores ajustados
-plot2 <- ggplot(pred_df, aes(x = er_los_hrs, y = predicted, col = factor(vasopressors), fill = factor(vasopressors))) + 
-  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.2) + 
-  theme_bw() + 
-  labs(x = "Time from admission (hours)",
-       y = "Predicted probability of death (%)",
-       col = "Vasopressors",
-       fill = "Vasopressors") + 
-  ylim(0, 50)
-
-print(plot2)
 
 
 ```
@@ -128,8 +105,7 @@ or_icudeath_gam <- extract_coef_pval_OR(gam_vaso)
 
 ## Ordenación de variables y asignación de nombres adecuados
 variables_order <- rev(c(
-  "Intercept", "Tiempo de ingreso en UCI (horas)", "Sex (Male)", "Age (years)", "Ethnicity", "ApachescoreIV", "Final Charlson Score"
-))
+  "Intercept", "Tiempo de ingreso en UCI (horas)", "Sex (Male)", "Age (years)", "Ethnicity", "ApachescoreIV", "Final Charlson Score"))
 
 or_icudeath_gam2 <- or_icudeath_gam %>%
   mutate(
@@ -144,8 +120,8 @@ or_icudeath_gam2 <- or_icudeath_gam %>%
       TRUE ~ as.character(term)
     ),
     adverse_protective_gam = case_when(
-      OR_lower > 1 & OR_upper > 1 ~ "Adverse",
-      OR_lower < 1 & OR_upper < 1 ~ "Protective",
+      OR_lower >= 1 & OR_upper >= 1 ~ "Adverse",
+      OR_lower <= 1 & OR_upper <= 1 ~ "Protective",
       OR_lower <= 1 & OR_upper >= 1 ~ "Inconclusive"
     ),
     adverse_protective_gam = factor(adverse_protective_gam, levels = c("Adverse", "Protective", "Inconclusive"))
@@ -183,11 +159,11 @@ ggplot(or_icudeath_gam2,
   labs(x = "Odds Ratio", y = NULL, title = "GAM model. Odds Ratio and Confidence Intervals\nfor Hospital Mortality-associated Factors. eICU Database") +
   theme_minimal() +
   scale_color_manual(
-    values = c("#c0392b", "#27ae60", "gray70"),
+    values = c("Adverse" = "#c0392b", "Protective" = "#27ae60", "Inconclusive" = "#A5AAAC"),
     labels = c("Adverse", "Protective", "Inconclusive"),
     name = "Effect on Outcome",
     limits = adverse_protective_levels_gam$adverse_protective_gam) + #establishes limits of color scale
-  scale_x_continuous(limits = c(0.5, 3)) +
+  scale_x_continuous(limits = c(0.5, 2)) +
   theme(
     plot.background = element_rect(fill = "white"),
     panel.grid.major.y = element_blank(),
