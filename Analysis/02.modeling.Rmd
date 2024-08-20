@@ -47,6 +47,125 @@ message("Datos cargados correctamente")
 
 # NEW GAM
 
+##GAM SIMPLE (SIN INTERACCIÓN DE VASOPRESORES)
+
+```{r}
+gam_simple <- bam(unitdischargestatus ~ 
+                    s(er_los_hrs, k=3) + 
+                    vasopressors +
+                    sex + 
+                    age +
+                    ethnicity + 
+                    apachescoreIV +  
+                    final_charlson_score,
+                  data = final_df_er_sepsis,
+                  family = binomial)
+
+plot1 <- marginaleffects::plot_predictions(gam_simple, condition = c("er_los_hrs")) + 
+  theme_bw() + 
+  labs(x = "Time from admission (hours)",
+       y = "Predicted probability of death") + 
+  ylim(0, 0.5)
+
+ggsave("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/plot_gam_vaso.png", plot = plot1, width = 8, height = 6)
+
+
+
+linear_model <- gam(unitdischargestatus ~ sex + age + ethnicity + apachescoreIV +  final_charlson_score + vasopressors, data = final_df_er_sepsis,
+    family = binomial)
+
+anova(linear_model, gam_simple, test = "Chisq")
+print(gam_simple)
+```
+
+
+
+###FOREST PLOT
+
+```{r}
+## Extracción de Odds Ratio (OR)
+or_icudeath_gam <- extract_coef_pval_OR(gam_simple)
+
+## Ordenación de variables y asignación de nombres adecuados
+variables_order <- rev(c(
+  "Intercept", "Tiempo de ingreso en UCI (horas)", "Sex (Male)", "Age (years)", "Ethnicity", "ApachescoreIV", "Final Charlson Score", "Use of Vasopressors"
+))
+
+or_icudeath_gam2 <- or_icudeath_gam %>%
+  mutate(
+    term = case_when(
+      term == "(Intercept)" ~ "Intercept",
+      term == "er_los_hrs" ~ "Tiempo de ingreso en UCI (horas)",
+      term == "sex" ~ "Sex (Male)",
+      term == "age" ~ "Age (years)",
+      term == "ethnicity" ~ "Ethnicity",
+      term == "apachescoreIV" ~ "ApachescoreIV",
+      term == "final_charlson_score" ~ "Final Charlson Score",
+      term == "vasopressors" ~ "Use of Vasopressors",
+      #term == "apacheadmissiondx" ~ "Apacheadmissiondx",
+      #term == "bact_resist_level" ~ "Bact resist level",
+      TRUE ~ as.character(term)
+    ),
+    adverse_protective_gam = case_when(
+      OR_lower >= 1 & OR_upper >= 1 ~ "Adverse",
+      OR_lower <= 1 & OR_upper <= 1 ~ "Protective",
+      OR_lower <= 1 & OR_upper >= 1 ~ "Inconclusive"
+    ),
+    adverse_protective_gam = factor(adverse_protective_gam, levels = c("Adverse", "Protective", "Inconclusive"))
+  ) %>%
+  filter(term != "Intercept")  # Filtrar si es necesario
+
+
+## Escritura de resultados en CSV
+#write.csv(or_icudeath_2, "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/or_icudeath_2.csv")
+
+## Impresión de resultados en formato HTML y exportación de una tabla kable
+#htmlTable(or_icudeath_2[,c("term", "OR", "OR_lower", "OR_upper")], caption = "Logistic Regression. Odds Ratio and Confidence Intervals for ICU Mortality-associated Factors. eICU Database")
+
+or_table_gam <- or_icudeath_gam2 %>%
+  select(term, OR, OR_lower, OR_upper) %>%
+  mutate(
+    term = factor(term, levels = variables_order),
+    OR_upper = ifelse(OR_upper <= 100, sprintf("%.2f", OR_upper), sprintf("%.2f", OR_upper))
+  ) %>%
+  arrange(desc(term)) %>%
+  kbl(caption = "GAM model. Odds Ratio and Confidence Intervals for ICU Mortality-associated Factors. eICU Database", align = "c") %>%
+  kable_classic_2(full_width = F, html_font = "Cambria")
+
+write.csv(or_table_gam, "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/or_icudeath_gam2_eicu.csv")
+
+## Create a data frame with all possible levels for adverse-protective-inconclusive variable
+adverse_protective_levels_gam <- data.frame(adverse_protective = c("Adverse", "Protective", "Inconclusive"))
+
+# Build the Forest plot
+forest_plot_simple <- ggplot(or_icudeath_gam2, 
+       aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = term)) +
+  geom_point(size = 2, aes(color = adverse_protective_gam)) +
+  geom_errorbarh(height = 0.2, aes(color = adverse_protective_gam)) +
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  labs(x = "Odds Ratio", y = NULL, title = "GAM model. Odds Ratio and Confidence Intervals\nfor Hospital Mortality-associated Factors. eICU Database") +
+  theme_minimal() +
+  scale_color_manual(
+    values = c("Adverse" = "#c0392b", "Protective" = "#27ae60", "Inconclusive" = "#A5AAAC"),
+  labels = c("Adverse", "Protective", "Inconclusive"),
+    name = "Effect on Outcome",
+    limits = adverse_protective_levels_gam$adverse_protective_gam) + #establishes limits of color scale
+  scale_x_continuous(limits = c(0.5, 2.5)) +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "top",
+    axis.ticks = element_blank(),
+    axis.text.x = element_text(color = "#2c3e50"),
+    axis.text.y = element_text(color = "#2c3e50"
+    ))
+
+ggsave("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/forestplot_gam_simple.png", plot = forest_plot_simple, width = 8, height = 6)
+```
+
+
 ##GAM VASOPRESORES
 
 ```{r}
@@ -69,10 +188,12 @@ gam_vaso <- bam(unitdischargestatus ~
 plot2 <- marginaleffects::plot_predictions(gam_vaso, condition = c("er_los_hrs", "vasopressors")) + 
   theme_bw() + 
   labs(x = "Time from admission (hours)",
-       y = "Predicted probability of death",
+       y = "Predicted probability of death (%)",
        col = "Vasopressors",
        fill = "Vasopressors") + 
-  ylim(0, 0.5)
+  scale_y_continuous(limits = c(0, 1), labels = scales::percent_format(scale = 100)) +
+  scale_color_manual(values = c("0" = "darkgray", "1" = "black")) + 
+  scale_fill_manual(values = c("0" = "darkgray", "1" = "black"))
 print(plot2)
 
 ggsave("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/plot_gam_vaso.png", plot = plot2, width = 8, height = 6)
@@ -83,17 +204,6 @@ linear_model <- glm(unitdischargestatus ~ er_los_hrs + sex + age + ethnicity + a
 
 anova(linear_model, gam_vaso, test = "Chisq")
 print(gam_vaso)
-
-
-# Calcular AIC de ambos modelos
-aic_linear <- AIC(linear_model)
-aic_gam <- AIC(gam_vaso)
-
-# Imprimir los AICs
-print(paste("AIC del modelo lineal:", aic_linear))
-print(paste("AIC del modelo GAM:", aic_gam))
-
-
 
 ```
 
@@ -151,7 +261,7 @@ write.csv(or_table_gam, "C:/Users/cjimenez10J/Documents/projects/r_urgencias_sep
 adverse_protective_levels_gam <- data.frame(adverse_protective = c("Adverse", "Protective", "Inconclusive"))
 
 # Build the Forest plot
-ggplot(or_icudeath_gam2, 
+forest_plot_vaso <- ggplot(or_icudeath_gam2, 
        aes(x = OR, xmin = OR_lower, xmax = OR_upper, y = term)) +
   geom_point(size = 2, aes(color = adverse_protective_gam)) +
   geom_errorbarh(height = 0.2, aes(color = adverse_protective_gam)) +
@@ -175,7 +285,7 @@ ggplot(or_icudeath_gam2,
     axis.text.y = element_text(color = "#2c3e50"
     ))
 
-ggsave("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/forestplot_gam_vaso.png", plot = forest_plot, width = 8, height = 6)
+ggsave("C:/Users/cjimenez10J/Documents/projects/r_urgencias_sepsis/r_urgencias_sepsis/Figures/forestplot_gam_vaso.png", plot = forest_plot_vaso, width = 8, height = 6)
 print(forest_plot)
 ```
 
