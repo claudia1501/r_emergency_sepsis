@@ -87,7 +87,7 @@ shock_vassop <- run_query(getSQL("C:/Users/cjimenez10J/Documents/projects/r_urge
 # Joining 1º df
 
 ```{r}
-#Unimos df
+#Unite df 
 dfs_to_join <- list(patients_total,
                     patients_admit,
                     apacheadmission,
@@ -100,7 +100,7 @@ dfs_to_join <- list(patients_total,
 # Perform the left join
 final_df <- Reduce(function(x, y) merge(x, y, by = "patientunitstayid", all.x = TRUE), dfs_to_join)
 
-##Criterio exlcusion
+##Exclusion criteria
 a <- nrow(final_df)
 print('Initial number of patients: ')
 print(a)
@@ -112,18 +112,18 @@ print(a)
 final_df$age <- as.numeric(gsub("> 89", "90", final_df$age))
 final_df <- final_df[final_df$age >= 16,]
 
-##Criterio exclusión
+##Exclusion criteria
 print('Patients >=16 ')
 b <- nrow(final_df)
 print(b)
 
 # Hospitaladmitoffset = er_los
-# Cambio de nombre, paso de minutos a horas y valores absolutos
+# Name change, conversion from minutes to hours and absolute values
 final_df <- final_df %>%
   mutate(er_los_hrs = abs(hospitaladmitoffset/60)) %>%
   select(-hospitaladmitoffset)
 
-# Quitar valores muy altos considerados outcome
+# Remove very high values considered as outcome
 final_df <- final_df %>%
   filter(er_los_hrs <= 24)
 
@@ -137,37 +137,37 @@ final_df <- final_df %>%
   mutate(sex = ifelse(sex != "Male" & sex != "Female", NA, sex)) %>%
   drop_na(sex)
 
-##Criterio exclusión
+##Exclusion criteria
 print('Patients with sex known: ')
 d <- nrow(final_df)
 print(d)
 
 # Hospital admit source (emergency department)
-#Emilinamos NA
+# DELETE NA
 final_df <- final_df %>%
   drop_na(hospitaladmitsource)
 
-##Cristerios exclusion
+## Exclusion criteria
 print('patient with emergency department')
 e <- nrow(final_df)
 print(e)
 
 # Unitstaytype
-# Eliminamos NA
+# DELETE NA
 final_df <- final_df %>%
   drop_na(unitstaytype)
 
-##Cristerios exclusion
+## Exclusion criteria
 print('patient with unit stay type admit')
 f <- nrow(final_df)
 print(f)
 
 # Apache admission dx
-#Eliminamos filas sin valores, NA
+# Delete rows without values, NA
 final_df <- final_df %>% 
   drop_na(apacheadmissiondx)
 
-## Cristerios exclusion
+## Exclusion criteria
 print('Patients with apache admission dx known')
 g <- nrow(final_df)
 print(g)
@@ -181,7 +181,7 @@ write.csv(final_df, file = "C:/Users/cjimenez10J/Documents/projects/r_urgencias_
 ### Sex
 
 ```{r}
-# Cambiar Male a M y Female a F
+# Change Male to M and Female to F
 final_df <- final_df %>%
   mutate(sex = ifelse(sex == "Male", "M", ifelse(sex == "Female", "F", sex)))
 
@@ -190,29 +190,33 @@ final_df <- final_df %>%
 ### Apache admission dx
 
 ```{r}
-# Unimos bajo un mismo nombre: pneumonia, bacterial y sepsis pulmonary = sepsis, pneumonia
+# Under the same name: pneumonia, bacterial and pulmonary sepsis = sepsis, pneumonia
 final_df <- final_df %>%
   mutate(apacheadmissiondx = ifelse(apacheadmissiondx %in% c("Pneumonia, bacterial", "Sepsis, pulmonary"), "sepsis, pneumonia", apacheadmissiondx))
 
-# Variable apache admission, agrupar en las 5 categorías con mayor valor y el resto agrupadas en la variable other (esto se hace debido a la poca cantidad que hay de muchas de esas categorias de diagnósticos)
+# Apache admission variable, group into the 5 categories with the highest value and the rest grouped into the other variable (this is done due to the small number of many of these diagnostic categories)
 
-# Cuenta la frecuencia de cada categoría
+# Count the frequency of each category
 apache_counts <- final_df %>%
   count(apacheadmissiondx, name = "Frequency")
-# Identifica las 5 categorías más frecuentes
+
+# Identify the 5 most frequent categories
 top_categories <- apache_counts %>%
   top_n(n = 5, wt = Frequency) %>%
   pull(apacheadmissiondx)
-# Agrupa las categorías menos frecuentes bajo "Other"
+
+# Group less frequent categories under "Other"
 final_df <- final_df %>%
  mutate(apacheadmissiondx = fct_lump(apacheadmissiondx, n = 5, other_level = "Other"))
-# Vuelve a contar la frecuencia después de la agrupación
+
+# Count the frequency again after grouping
 top_apacheadmissiondx <- final_df %>%
   count(apacheadmissiondx, name = "Frequency")
-# Muestra el resultado
+
+# Show the result
 print(top_apacheadmissiondx)
 
-#Lista de las 10 categorías con más valores
+# List of the 10 categories with the most values
 top_categories <- c("sepsis, pneumonia",
   "Sepsis, GI",
   "Sepsis, cutaneous/soft tissue",
@@ -220,7 +224,7 @@ top_categories <- c("sepsis, pneumonia",
   "Sepsis, unknown",
   "Other")
 
-# Crear una nueva variable "apacheadmissiondx_recoded" que recodifique las categorías no incluidas en el ranking como "Other"
+# Create a new variable "apacheadmissiondx_recoded" that recodes the categories not included in the ranking as "Other"
 final_df <- final_df %>%
   mutate(
     apacheadmissiondx = dplyr::recode(
@@ -352,7 +356,7 @@ labelloc=\"t\";  // Colocar el título arriba del diagrama
 grViz(flowchart_code)
 ```
 
-# Análisis de subgrupos shock séptico (vasopresores)
+# Subgroup analysis of septic shock (vasopressors)
 
 ```{r}
 final_shock_séptico <- final_df_er_sepsis %>%
@@ -362,7 +366,7 @@ final_shock_séptico <- final_df_er_sepsis %>%
 final_df_er_sepsis <- distinct(final_shock_séptico)
 ```
 
-# Boxplot tiempo y diabetes
+# Boxplot time and diabetes
 
 ```{r}
 ggplot(final_df_er_sepsis, aes(x = as.factor(hist_diabetes_bin), y = er_los_hrs)) +
