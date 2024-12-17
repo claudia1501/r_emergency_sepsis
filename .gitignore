@@ -2,3 +2,9 @@
 .Rhistory
 .RData
 .Ruserdata
+*.csv
+*.RData
+*.html
+.Rproj
+*.RDS
+.rds
