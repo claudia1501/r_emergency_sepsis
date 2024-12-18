@@ -1,9 +1,7 @@
 # r_urgencias_sepsis
-Replica de proyecto Isabel en Rstudio
-DOCUMENTACIÓN BASE DE DATOS: https://eicu-crd.mit.edu/about/eicu/
 
-HIPÓTESIS: -Hipótesis 1: 
-    Los pacientes que entraron al hospital por urgencias con diagnóstico de entrada de sepsis/infección ¿tiene efectos en la mortalidad el retraso en su ingreso en UCI?
+HYPOTHESIS: 
+    Do patients who entered the hospital from the emergency department with a diagnosis of sepsis/infection have an effect on mortality if their admission to the ICU is delayed?
 -
-   Criterios de inclusión:  Mayores de 16 años, Entran por urgencias,  Con diagnóstico en uci de sepsis, Con antibiograma 48 h antes/después de entrar en UCI
+    Inclusion criteria: Over 16 years of age, Admitted to the emergency department, Diagnosed in ICU with sepsis, With antibiogram 48 h before/after admission to ICU.
 -
